@@ -28,14 +28,14 @@
             -webkit-user-select: none;
             user-select: none;
             font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #f5f7fa 0%, #e8edf2 100%);
+            background: #f5f7fa;
         }
     </style>
 </head>
 
-<body class="font-inter bg-white h-screen flex flex-col">
+<body class="font-inter h-screen flex flex-col">
     <!-- Header -->
-    <div class="flex-shrink-0" style="background-color: #111827;">
+    <div class="flex-shrink-0" style="background-color: #09121E;">
         <div class="px-8 py-4 flex items-center justify-between">
             <div class="flex items-center space-x-4">
                 <div>
@@ -65,8 +65,8 @@
                 class="bg-white border-2 border-gray-200 rounded-2xl shadow-lg p-5 h-full flex flex-col justify-center">
                 <div class="flex items-center justify-center mb-4">
                     <div class="inline-flex items-center justify-center w-12 h-12 rounded-full"
-                        style="background-color: rgba(17, 24, 39, 0.1);">
-                        <i class="fas fa-clipboard-check text-2xl" style="color: #111827;"></i>
+                        style="background-color: rgba(9, 18, 30, 0.1);">
+                        <i class="fas fa-clipboard-check text-2xl" style="color: #09121E;"></i>
                     </div>
                 </div>
 
@@ -78,7 +78,7 @@
                     <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                         <div class="flex items-center space-x-3">
                             <div class="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-                                style="background-color: #111827;">
+                                style="background-color: #09121E;">
                                 <i class="fas fa-user text-white text-xs"></i>
                             </div>
                             <div>
@@ -87,7 +87,7 @@
                             </div>
                         </div>
                         <button onclick="editField('name')" class="hover:opacity-80 transition p-2"
-                            style="color: #111827;">
+                            style="color: #09121E;">
                             <i class="fas fa-edit text-base"></i>
                         </button>
                     </div>
@@ -96,7 +96,7 @@
                     <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                         <div class="flex items-center space-x-3">
                             <div class="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-                                style="background-color: #111827;">
+                                style="background-color: #09121E;">
                                 <i class="fas fa-users text-white text-xs"></i>
                             </div>
                             <div>
@@ -105,7 +105,7 @@
                             </div>
                         </div>
                         <button onclick="editField('party')" class="hover:opacity-80 transition p-2"
-                            style="color: #111827;">
+                            style="color: #09121E;">
                             <i class="fas fa-edit text-base"></i>
                         </button>
                     </div>
@@ -114,7 +114,7 @@
                     <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                         <div class="flex items-center space-x-3">
                             <div class="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-                                style="background-color: #111827;">
+                                style="background-color: #09121E;">
                                 <i class="fas fa-phone text-white text-xs"></i>
                             </div>
                             <div>
@@ -123,7 +123,7 @@
                             </div>
                         </div>
                         <button onclick="editField('contact')" class="hover:opacity-80 transition p-2"
-                            style="color: #111827;">
+                            style="color: #09121E;">
                             <i class="fas fa-edit text-base"></i>
                         </button>
                     </div>
@@ -132,7 +132,7 @@
                     <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                         <div class="flex items-center space-x-3">
                             <div class="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-                                style="background-color: #111827;">
+                                style="background-color: #09121E;">
                                 <i class="fas fa-star text-white text-xs"></i>
                             </div>
                             <div>
@@ -140,8 +140,7 @@
                                 @if($customer->id_verification_status === 'skipped_priority')
                                     <div class="flex items-center space-x-2">
                                         <p class="text-base font-bold text-gray-800">Regular Guest</p>
-                                        <span
-                                            class="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-semibold rounded-full">Priority Skipped</span>
+                                        <span class="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-semibold rounded-full">Priority Skipped</span>
                                     </div>
                                 @elseif($customer->has_priority_member ?? false)
                                     <div class="flex items-center space-x-2">
@@ -157,14 +156,13 @@
                                 @else
                                     <div class="flex items-center space-x-2">
                                         <p class="text-base font-bold text-gray-800">Regular Guest</p>
-                                        <span
-                                            class="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">Standard</span>
+                                        <span class="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">Standard</span>
                                     </div>
                                 @endif
                             </div>
                         </div>
                         <button onclick="editField('priority')" class="hover:opacity-80 transition p-2"
-                            style="color: #111827;">
+                            style="color: #09121E;">
                             <i class="fas fa-edit text-base"></i>
                         </button>
                     </div>
@@ -177,8 +175,8 @@
                 <div class="text-center">
                     <!-- Queue Number - Large & Prominent -->
                     <div class="mb-6">
-                        <p class="text-sm font-medium mb-2" style="color: #111827;">Your Queue Number</p>
-                        <p class="text-7xl font-bold mb-2" style="color: #111827;">#{{ $customer->queue_number }}</p>
+                        <p class="text-sm font-medium mb-2" style="color: #09121E;">Your Queue Number</p>
+                        <p class="text-7xl font-bold mb-2" style="color: #09121E;">#{{ $customer->queue_number }}</p>
                     </div>
 
                     <!-- Divider -->
@@ -189,9 +187,9 @@
                         <!-- Customers Ahead -->
                         <div class="customers-ahead-section">
                             <div class="flex flex-col items-center">
-                                <i class="fas fa-users text-3xl mb-2" style="color: #111827;"></i>
+                                <i class="fas fa-users text-3xl mb-2" style="color: #09121E;"></i>
                                 <p class="text-xs text-gray-600 mb-1">Customers Ahead</p>
-                                <p class="text-4xl font-bold mb-2" style="color: #111827;" x-text="customersAhead">
+                                <p class="text-4xl font-bold mb-2" style="color: #09121E;" x-text="customersAhead">
                                     {{ $queueInfo['customers_ahead'] ?? 0 }}
                                 </p>
                                 <p class="text-xs text-gray-500" x-show="customersAhead > 0">
@@ -207,9 +205,9 @@
                         <!-- Wait Time -->
                         <div class="wait-time-section">
                             <div class="flex flex-col items-center">
-                                <i class="fas fa-clock text-3xl mb-2" style="color: #111827;"></i>
+                                <i class="fas fa-clock text-3xl mb-2" style="color: #09121E;"></i>
                                 <p class="text-xs text-gray-600 mb-1">Estimated Wait</p>
-                                <p class="text-4xl font-bold mb-2" style="color: #111827;" x-text="waitTimeFormatted">
+                                <p class="text-4xl font-bold mb-2" style="color: #09121E;" x-text="waitTimeFormatted">
                                     {{ $formattedWait }}
                                 </p>
                                 <p class="text-xs text-gray-500">minutes</p>
@@ -246,7 +244,7 @@
             <!-- Continue Button -->
             <button type="button" onclick="confirmAndPrint()"
                 class="px-12 py-4 text-white font-semibold text-lg rounded-xl shadow-xl transition-all duration-200 flex items-center space-x-2 hover:shadow-2xl hover:scale-105"
-                style="background-color: #111827;">
+                style="background-color: #09121E;">
                 <span>Confirm & Print Receipt</span>
                 <i class="fas fa-check text-lg"></i>
             </button>
@@ -385,4 +383,3 @@
 </body>
 
 </html>
-
