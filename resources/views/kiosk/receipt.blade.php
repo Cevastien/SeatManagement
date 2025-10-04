@@ -328,7 +328,6 @@
                 hour12: true
             };
             const timeFormatted = now.toLocaleString('en-US', timeOptions);
-            document.getElementById('time').textContent = timeFormatted;
 
             const dateOptions = {
                 month: 'short',
@@ -336,18 +335,32 @@
                 year: 'numeric'
             };
             const dateFormatted = now.toLocaleString('en-US', dateOptions);
-            document.getElementById('date').textContent = dateFormatted;
 
-            // Update receipt time
-            document.getElementById('receiptTime').textContent = now.toLocaleDateString('en-US', { 
-                day: 'numeric', 
-                month: 'short', 
-                year: 'numeric' 
-            }) + ' - ' + now.toLocaleTimeString('en-US', { 
-                hour: 'numeric', 
-                minute: '2-digit', 
-                hour12: true 
-            });
+            // Update header time and date
+            const timeElement = document.getElementById('time');
+            const dateElement = document.getElementById('date');
+            
+            if (timeElement) {
+                timeElement.textContent = timeFormatted;
+            }
+            
+            if (dateElement) {
+                dateElement.textContent = dateFormatted;
+            }
+
+            // Update receipt time if element exists
+            const receiptTimeElement = document.getElementById('receiptTime');
+            if (receiptTimeElement) {
+                receiptTimeElement.textContent = now.toLocaleDateString('en-US', { 
+                    day: 'numeric', 
+                    month: 'short', 
+                    year: 'numeric' 
+                }) + ' - ' + now.toLocaleTimeString('en-US', { 
+                    hour: 'numeric', 
+                    minute: '2-digit', 
+                    hour12: true 
+                });
+            }
         }
 
         updateDateTime();
