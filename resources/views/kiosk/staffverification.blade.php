@@ -13,14 +13,6 @@
         tailwind.config = {
             theme: {
                 extend: {
-                    colors: {
-                        primary: '#6366f1',
-                        'primary-dark': '#4f46e5',
-                        secondary: '#2c3e50',
-                        accent: '#f59e0b',
-                        neutral: '#f5f7fa',
-                        'neutral-dark': '#e3e8ef'
-                    },
                     fontFamily: {
                         'inter': ['Inter', 'sans-serif']
                     }
@@ -36,6 +28,7 @@
             -webkit-user-select: none;
             user-select: none;
             font-family: 'Inter', sans-serif;
+            background: #f5f7fa;
         }
 
         @keyframes pulse-slow {
@@ -53,114 +46,140 @@
     </style>
 </head>
 
-<body class="font-inter bg-white h-screen flex flex-col">
+<body class="font-inter h-screen flex flex-col">
     <!-- Header -->
-    <div class="flex-shrink-0" style="background-color: #111827;">
-        <div class="p-6 flex items-center justify-between">
+    <div class="flex-shrink-0" style="background-color: #09121E;">
+        <div class="px-8 py-4 flex items-center justify-between">
             <div class="flex items-center space-x-4">
                 <div>
-                    <div class="flex items-center space-x-3 mb-1">
-                        <h1 class="text-2xl font-bold text-white">Priority Verification</h1>
-                        <span class="px-3 py-1 text-white text-xs font-semibold rounded-full"
-                            style="background-color: #374151;">Step 1.5 of 4</span>
+                    <div class="flex items-center space-x-3 mb-0.5">
+                        <h1 class="text-xl font-semibold text-white" id="headerTitle">Priority Verification</h1>
+                        <span class="px-2.5 py-0.5 text-white text-xs font-semibold rounded-full"
+                            style="background-color: rgba(255, 255, 255, 0.15);" id="stepIndicator">Step 1.5 of 4</span>
                     </div>
-                    <p class="text-gray-300 text-sm">Staff assistance required for ID verification</p>
+                    <p class="text-gray-300 text-xs" id="headerDescription">Staff assistance required for ID verification</p>
                 </div>
             </div>
             <div class="flex items-center space-x-6">
                 <div class="text-right">
-                    <p class="text-white text-2xl font-bold" id="time">3:24 PM</p>
-                    <p class="text-gray-300 text-sm" id="date">Sep 16, 2025</p>
+                    <p class="text-white text-xl font-bold" id="time">3:24 PM</p>
+                    <p class="text-gray-300 text-xs" id="date">Sep 16, 2025</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Main Content -->
-    <div class="flex-1 flex items-center justify-center p-8 overflow-auto">
-        <div class="w-full max-w-4xl">
-            <!-- ID Verification Icon -->
-            <div class="flex justify-center mb-6">
-                <div class="inline-flex items-center justify-center w-24 h-24 rounded-full bg-amber-100">
-                    <i class="fas fa-id-card text-amber-600 text-5xl"></i>
-                </div>
+    <!-- SCREEN 1: Initial Call Staff Screen -->
+    <div class="flex-1 flex items-center justify-center overflow-hidden" id="initialScreen">
+        <div class="flex flex-col items-center">
+            <!-- ID Icon with Float Animation -->
+            <div class="inline-flex items-center justify-center w-24 h-24 rounded-full bg-amber-100 mb-6 float-animation">
+                <i class="fas fa-id-card text-amber-600 text-5xl"></i>
             </div>
 
-            <h2 class="text-4xl font-bold text-gray-800 text-center mb-3">ID Verification Required</h2>
-            <p class="text-xl text-gray-600 text-center mb-4" id="priorityMessage">
-                @php
-                    $priorityType = request()->get('priority_type', 'senior');
-                    $name = request()->get('name', 'Guest');
-                    $displayType = match($priorityType) {
-                        'senior' => 'Senior Citizen',
-                        'pwd' => 'Person with Disability (PWD)',
-                        default => 'Priority Customer',
-                    };
-                @endphp
-                Hello <strong>{{ $name }}</strong>, you've registered as a <strong>{{ $displayType }}</strong>
-            </p>
-            <p class="text-lg text-gray-500 text-center mb-10">A staff member will verify your ID to complete your priority registration</p>
-
-            <!-- Information Card -->
-            <div class="bg-white border-2 border-gray-200 rounded-2xl shadow-xl p-8 mb-8">
-                <div class="flex items-start space-x-4">
-                    <div class="flex-shrink-0">
-                        <i class="fas fa-info-circle text-primary text-3xl"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-xl font-bold text-secondary mb-3">What You Need to Do:</h3>
-                        <ul class="space-y-2 text-gray-700">
-                            <li class="flex items-start">
-                                <i class="fas fa-check-circle text-primary mt-1 mr-3"></i>
-                                <span class="text-lg">Have your valid ID ready (Senior Citizen ID, PWD ID, or government-issued ID)</span>
-                            </li>
-                            <li class="flex items-start">
-                                <i class="fas fa-check-circle text-primary mt-1 mr-3"></i>
-                                <span class="text-lg">Press the button below to call a staff member</span>
-                            </li>
-                            <li class="flex items-start">
-                                <i class="fas fa-check-circle text-primary mt-1 mr-3"></i>
-                                <span class="text-lg">Show your ID to the staff member when they arrive</span>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
+            <h2 class="text-4xl font-bold text-gray-800 mb-3 text-center">ID Verification Required</h2>
+            <p class="text-xl text-gray-600 mb-12 text-center">A staff member will verify your ID for priority access</p>
 
             <!-- Call Staff Button -->
-            <div class="mb-8">
-                <button onclick="callStaff()" 
-                    class="w-full bg-primary hover:bg-primary-dark text-white font-bold py-6 px-8 rounded-xl transition duration-200 transform hover:scale-105 shadow-lg">
-                    <div class="flex items-center justify-center space-x-4">
-                        <i class="fas fa-bell text-3xl pulse-slow"></i>
-                        <span class="text-2xl">Call Staff for ID Verification</span>
-                    </div>
-                </button>
+            <button onclick="callStaff()" 
+                class="px-16 py-6 text-white rounded-xl hover:bg-gray-800 font-bold text-2xl shadow-2xl transition-all duration-200 transform hover:scale-105 mb-8"
+                style="background-color: #09121E;">
+                <div class="flex items-center space-x-4">
+                    <i class="fas fa-bell text-3xl pulse-slow"></i>
+                    <span>Call Staff for Verification</span>
+                </div>
+            </button>
+
+            <!-- Simple Instructions -->
+            <div class="bg-gray-50 border-2 border-gray-200 rounded-xl px-8 py-4 mb-4">
+                <p class="text-lg text-gray-700 text-center">
+                    Please have your <strong>Senior Citizen ID, PWD ID, or Government ID</strong> ready
+                </p>
             </div>
 
-            <!-- Alternative Options -->
-            <div class="bg-white border-2 border-gray-200 rounded-2xl shadow-xl p-6">
-                <h3 class="text-lg font-bold text-secondary mb-4 text-center">Other Options</h3>
-                <div class="grid grid-cols-1 gap-4">
-                    <!-- Skip Priority -->
-                    <button onclick="skipPriority()" 
-                        class="w-full bg-white hover:bg-gray-50 text-gray-700 font-semibold py-4 px-6 rounded-xl border-2 border-gray-300 transition duration-200">
-                        <div class="flex items-center justify-center space-x-3">
-                            <i class="fas fa-forward text-xl"></i>
-                            <span class="text-lg">Continue as Regular Customer</span>
-                        </div>
-                    </button>
-                    
-                    <!-- Go Back -->
-                    <button onclick="goBack()" 
-                        class="w-full bg-white hover:bg-gray-50 text-gray-700 font-semibold py-4 px-6 rounded-xl border-2 border-gray-300 transition duration-200">
-                        <div class="flex items-center justify-center space-x-3">
-                            <i class="fas fa-arrow-left text-xl"></i>
-                            <span class="text-lg">Go Back to Registration</span>
-                        </div>
-                    </button>
+            <!-- Estimated Time -->
+            <p class="text-sm text-gray-500 text-center">
+                <i class="fas fa-clock mr-2"></i>Staff will arrive within <strong>2-3 minutes</strong>
+            </p>
+        </div>
+    </div>
+
+    <!-- SCREEN 2: Calling Staff Screen (Hidden) -->
+    <div class="flex-1 flex items-center justify-center overflow-hidden hidden" id="callingScreen">
+        <div class="flex flex-col items-center">
+            <!-- Spinning Icon -->
+            <div class="inline-flex items-center justify-center w-24 h-24 rounded-full bg-blue-100 mb-6">
+                <i class="fas fa-bell text-blue-600 text-5xl spin-animation"></i>
+            </div>
+
+            <h2 class="text-4xl font-bold text-gray-800 mb-3 text-center">Calling Staff...</h2>
+            <p class="text-xl text-gray-600 mb-8 text-center">Please wait while we notify our team</p>
+
+            <!-- Loading Bar -->
+            <div class="w-96 h-3 bg-gray-200 rounded-full overflow-hidden mb-8">
+                <div class="h-full rounded-full pulse-slow" style="background-color: #09121E; width: 60%;"></div>
+            </div>
+
+            <p class="text-sm text-gray-500 text-center">This will only take a moment...</p>
+        </div>
+    </div>
+
+    <!-- SCREEN 3: Waiting for Staff Screen (Hidden) -->
+    <div class="flex-1 flex items-center justify-center overflow-hidden hidden" id="waitingScreen">
+        <div class="flex flex-col items-center">
+            <!-- Clock Icon with Pulse -->
+            <div class="inline-flex items-center justify-center w-24 h-24 rounded-full bg-green-100 mb-6">
+                <i class="fas fa-clock text-green-600 text-5xl pulse-slow"></i>
+            </div>
+
+            <h2 class="text-4xl font-bold text-gray-800 mb-3 text-center">Waiting for Staff Verification</h2>
+            <p class="text-xl text-gray-600 mb-8 text-center">A staff member will be with you shortly</p>
+
+            <!-- Staff Notified Card -->
+            <div class="bg-green-50 border-2 border-green-200 rounded-xl px-12 py-6 mb-8">
+                <div class="flex items-center space-x-4">
+                    <i class="fas fa-check-circle text-green-600 text-3xl"></i>
+                    <div>
+                        <p class="text-lg font-bold text-green-800">Staff Notified Successfully</p>
+                        <p class="text-sm text-green-700">Please have your ID ready</p>
+                    </div>
                 </div>
             </div>
+
+            <!-- Instructions -->
+            <div class="bg-gray-50 border-2 border-gray-200 rounded-xl px-8 py-4">
+                <p class="text-base text-gray-700 text-center">
+                    <i class="fas fa-info-circle mr-2" style="color: #09121E;"></i>
+                    Estimated arrival: <strong>2-3 minutes</strong>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCREEN 4: Verification Complete Screen (Hidden) -->
+    <div class="flex-1 flex items-center justify-center overflow-hidden hidden" id="completeScreen">
+        <div class="flex flex-col items-center">
+            <!-- Success Checkmark -->
+            <div class="inline-flex items-center justify-center w-24 h-24 rounded-full bg-green-100 mb-6">
+                <i class="fas fa-check text-green-600 text-5xl"></i>
+            </div>
+
+            <h2 class="text-4xl font-bold text-gray-800 mb-3 text-center">Verification Complete!</h2>
+            <p class="text-xl text-gray-600 mb-12 text-center">Your priority status has been confirmed</p>
+
+            <!-- Success Card -->
+            <div class="bg-white border-2 border-gray-200 rounded-xl px-12 py-6 shadow-lg mb-8">
+                <div class="text-center">
+                    <p class="text-lg text-gray-700 mb-2">You are now registered as:</p>
+                    <p class="text-2xl font-bold text-gray-900">Senior Citizen Priority Guest</p>
+                </div>
+            </div>
+
+            <!-- Redirecting Message -->
+            <p class="text-base text-gray-600 text-center">
+                <i class="fas fa-spinner spin-animation mr-2"></i>
+                Redirecting to next step...
+            </p>
         </div>
     </div>
 
@@ -172,6 +191,26 @@
             </div>
             <h3 class="text-2xl font-bold text-gray-800 mb-2">Calling Staff...</h3>
             <p class="text-gray-600">Please wait for a staff member to assist you</p>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation Bar -->
+    <div class="bg-white px-8 py-5 flex-shrink-0 shadow-lg" id="bottomNav">
+        <div class="flex items-center justify-between max-w-6xl mx-auto">
+            <!-- Go Back Button -->
+            <button onclick="goBack()"
+                class="px-16 py-5 bg-white hover:bg-gray-50 border-3 border-gray-400 text-gray-800 font-semibold text-xl rounded-2xl transition-all duration-200 flex items-center space-x-3 shadow-md hover:shadow-lg">
+                <i class="fas fa-arrow-left text-2xl"></i>
+                <span>Go Back</span>
+            </button>
+
+            <!-- Skip Priority Button -->
+            <button onclick="skipPriority()" 
+                class="px-20 py-5 text-white font-semibold text-xl rounded-2xl shadow-xl transition-all duration-200 flex items-center space-x-3 hover:shadow-2xl hover:scale-105"
+                style="background-color: #09121E;">
+                <span>Skip Priority</span>
+                <i class="fas fa-arrow-right text-2xl"></i>
+            </button>
         </div>
     </div>
 
@@ -206,20 +245,28 @@
         updateDateTime();
         setInterval(updateDateTime, 1000);
 
+        // Show screen by ID and hide others
+        function showScreen(screenId) {
+            const screens = ['initialScreen', 'callingScreen', 'waitingScreen', 'completeScreen'];
+            screens.forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+            document.getElementById(screenId).classList.remove('hidden');
+        }
+
         // Call staff for assistance
         async function callStaff() {
             if (hasCalledStaff) {
-                alert('⏳ Staff has already been notified.\n\nPlease wait for a team member to assist you.');
+                alert('Staff has already been notified.\n\nPlease wait for a team member to assist you.');
                 return;
             }
 
-            const overlay = document.getElementById('processingOverlay');
-            const overlayTitle = overlay.querySelector('h3');
-            const overlayText = overlay.querySelector('p');
-            
-            overlay.classList.remove('hidden');
-            overlayTitle.textContent = 'Calling Staff...';
-            overlayText.textContent = 'Please wait for a staff member to assist you';
+            hasCalledStaff = true;
+
+            // Show calling screen
+            showScreen('callingScreen');
+            document.getElementById('headerTitle').textContent = 'Calling Staff';
+            document.getElementById('headerDescription').textContent = 'Notifying team member...';
 
             try {
                 // Send verification request to API
@@ -239,28 +286,24 @@
 
                 if (data.success) {
                     verificationId = data.verification.id;
-                    hasCalledStaff = true;
 
-                    console.log('✓ Staff notification sent:', {
-                        verification_id: verificationId,
-                        customer_name: customerName,
-                        priority_type: priorityType
-                    });
+                    // Move to waiting screen after 2 seconds
+                    setTimeout(() => {
+                        showScreen('waitingScreen');
+                        document.getElementById('headerTitle').textContent = 'Waiting for Verification';
+                        document.getElementById('headerDescription').textContent = 'Staff member is on the way';
 
-                    // Update overlay to show waiting state
-                    overlayTitle.textContent = '⏳ Waiting for Staff Verification';
-                    overlayText.textContent = 'A staff member will be with you shortly. Please have your ID ready.';
-
-                    // Start checking verification status
-                    startStatusCheck();
+                        // Start checking verification status
+                        startStatusCheck();
+                    }, 2000);
                 } else {
                     throw new Error(data.message || 'Failed to call staff');
                 }
                 
             } catch (error) {
                 console.error('Error calling staff:', error);
-                alert('⚠️ There was an error calling staff. Please try again or approach the counter directly.');
-                overlay.classList.add('hidden');
+                alert('There was an error calling staff. Please try again or approach the counter directly.');
+                showScreen('initialScreen');
                 hasCalledStaff = false;
             }
         }
@@ -282,18 +325,19 @@
                         // Stop checking
                         clearInterval(statusCheckInterval);
                         
-                        // Show success message
-                        const overlay = document.getElementById('processingOverlay');
-                        const overlayTitle = overlay.querySelector('h3');
-                        const overlayText = overlay.querySelector('p');
+                        // Show complete screen
+                        showScreen('completeScreen');
+                        document.getElementById('headerTitle').textContent = 'Verification Complete';
+                        document.getElementById('headerDescription').textContent = 'Priority status confirmed';
+                        document.getElementById('stepIndicator').textContent = 'Step 2 of 4';
+
+                        // Hide bottom navigation on complete screen
+                        document.getElementById('bottomNav').style.display = 'none';
                         
-                        overlayTitle.textContent = '✓ Verification Complete!';
-                        overlayText.textContent = 'Redirecting to next step...';
-                        
-                        // Redirect to review details after a short delay
+                        // Redirect to review details after 3 seconds
                         setTimeout(() => {
                             window.location.href = '{{ route("kiosk.review-details") }}';
-                        }, 1500);
+                        }, 3000);
                     }
                 } catch (error) {
                     console.error('Error checking verification status:', error);
@@ -303,11 +347,11 @@
 
         // Skip priority and continue as regular customer
         function skipPriority() {
-            if (confirm('Are you sure you want to continue as a regular customer?\n\nYou will lose priority queue benefits.')) {
+            if (confirm('Are you sure you want to skip priority verification?\n\nYou will be registered as a regular customer.')) {
                 if (statusCheckInterval) {
                     clearInterval(statusCheckInterval);
                 }
-                window.location.href = '{{ route("kiosk.review-details") }}?skip_priority=1';
+                alert('Continuing as regular customer...');
             }
         }
 
@@ -317,7 +361,7 @@
                 if (statusCheckInterval) {
                     clearInterval(statusCheckInterval);
                 }
-                window.location.href = '{{ route("kiosk.registration") }}';
+                alert('Returning to registration...');
             }
         }
 
