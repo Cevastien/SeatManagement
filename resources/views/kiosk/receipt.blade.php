@@ -13,14 +13,6 @@
         tailwind.config = {
             theme: {
                 extend: {
-                    colors: {
-                        primary: '#6366f1',
-                        'primary-dark': '#4f46e5',
-                        secondary: '#2c3e50',
-                        accent: '#f59e0b',
-                        neutral: '#f5f7fa',
-                        'neutral-dark': '#e3e8ef'
-                    },
                     fontFamily: {
                         'inter': ['Inter', 'sans-serif']
                     }
@@ -35,6 +27,8 @@
             -webkit-touch-callout: none;
             -webkit-user-select: none;
             user-select: none;
+            font-family: 'Inter', sans-serif;
+            background: #f5f7fa;
         }
 
         @keyframes printSlide {
@@ -124,197 +118,181 @@
     </style>
 </head>
 
-<body class="font-inter bg-white h-screen flex flex-col">
+<body class="font-inter h-screen flex flex-col">
     <!-- Header -->
-    <div class="flex-shrink-0" style="background-color: #111827;">
-        <div class="p-6 flex items-center justify-between">
+    <div class="flex-shrink-0" style="background-color: #09121E;">
+        <div class="px-8 py-4 flex items-center justify-between">
             <div class="flex items-center space-x-4">
                 <div>
-                    <div class="flex items-center space-x-3 mb-1">
-                        <h1 class="text-2xl font-bold text-white" id="headerTitle">Preparing Your Receipt</h1>
-                        <span class="px-3 py-1 text-white text-xs font-semibold rounded-full"
-                            style="background-color: #374151;">Step 3 of 4</span>
+                    <div class="flex items-center space-x-3 mb-0.5">
+                        <h1 class="text-xl font-semibold text-white" id="headerTitle">Preparing Your Receipt</h1>
+                        <span class="px-2.5 py-0.5 text-white text-xs font-semibold rounded-full"
+                            style="background-color: rgba(255, 255, 255, 0.15);">Step 3 of 4</span>
                     </div>
-                    <p class="text-gray-300 text-sm">Please wait while we prepare your queue receipt</p>
+                    <p class="text-gray-300 text-xs" id="headerDesc">Please wait while we prepare your queue receipt</p>
                 </div>
             </div>
             <div class="flex items-center space-x-6">
                 <div class="text-right">
-                    <p class="text-white text-2xl font-bold" id="time">3:24 PM</p>
-                    <p class="text-gray-300 text-sm" id="date">Sep 16, 2025</p>
+                    <p class="text-white text-xl font-bold" id="time">3:24 PM</p>
+                    <p class="text-gray-300 text-xs" id="date">Sep 16, 2025</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Main Content - Printing State -->
-    <div class="flex-1 flex items-center justify-center overflow-hidden" id="printingState">
-        <div class="flex flex-col items-center">
-            <!-- Success Checkmark -->
-            <div class="inline-flex items-center justify-center w-24 h-24 rounded-full bg-green-100 mb-8">
-                <i class="fas fa-check text-green-600 text-5xl"></i>
-            </div>
-
-            <h2 class="text-4xl font-bold text-gray-800 mb-3">Registration Successful!</h2>
-            <p class="text-xl text-gray-600 mb-12">Your queue number is being printed...</p>
-
-            <!-- Printer Frame -->
-            <div class="relative w-full max-w-md mb-8" style="height: 500px;">
-                <!-- Printer Box -->
-                <div
-                    class="absolute top-0 left-1/2 transform -translate-x-1/2 w-80 h-48 bg-gray-800 rounded-t-2xl shadow-2xl">
-                    <!-- Printer Top -->
-                    <div
-                        class="absolute top-4 left-4 right-4 h-16 bg-gray-700 rounded-lg flex items-center justify-center">
-                        <div class="w-16 h-2 bg-green-500 rounded-full pulse-slow"></div>
+    <!-- Main Content - Printing State (NO SCROLL, Single View) -->
+    <div class="flex-1 flex items-center justify-center overflow-hidden bg-gray-100" id="printingState">
+        <div class="w-full max-w-6xl mx-auto px-8">
+            <div class="grid grid-cols-2 gap-8 items-center">
+                
+                <!-- LEFT COLUMN: Status & Actions -->
+                <div class="flex flex-col items-center justify-center">
+                    <!-- Success Checkmark -->
+                    <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-100 mb-6">
+                        <i class="fas fa-check text-green-600 text-4xl"></i>
                     </div>
-                    <!-- Printer Display -->
-                    <div
-                        class="absolute bottom-4 left-4 right-4 h-20 bg-gray-900 rounded-lg flex items-center justify-center">
-                        <i class="fas fa-print text-white text-3xl pulse-slow"></i>
+
+                    <h2 class="text-3xl font-bold text-gray-800 mb-2">Registration Successful!</h2>
+                    <p class="text-lg text-gray-600 mb-8">Your queue number is ready</p>
+
+                    <!-- Status Indicator -->
+                    <div class="flex items-center justify-center space-x-3 px-6 py-3 bg-white rounded-full shadow-lg mb-8">
+                        <div class="w-2.5 h-2.5 rounded-full animate-pulse" style="background-color: #09121E;"></div>
+                        <span class="text-base font-semibold text-gray-700" id="statusText">Preparing receipt...</span>
+                    </div>
+
+                    <!-- Customer Print Decision -->
+                    <div id="customerPrintDecision" class="hidden bg-white border-2 border-gray-200 rounded-2xl shadow-xl p-6 w-full">
+                        <div class="text-center">
+                            <h3 class="text-xl font-bold text-gray-800 mb-3">Print Your Receipt?</h3>
+                            <p class="text-sm text-gray-600 mb-5">Would you like a physical copy?</p>
+                            <div class="flex space-x-4 justify-center">
+                                <button onclick="customerChoosePrint(true)" 
+                                    class="flex-1 px-6 py-3 text-white rounded-xl hover:opacity-90 font-semibold text-base shadow-lg transition-all"
+                                    style="background-color: #09121E;">
+                                    <i class="fas fa-print mr-2"></i>Yes, Print
+                                </button>
+                                <button onclick="customerChoosePrint(false)" 
+                                    class="flex-1 px-6 py-3 bg-gray-600 text-white rounded-xl hover:bg-gray-700 font-semibold text-base shadow-lg transition-all">
+                                    <i class="fas fa-times mr-2"></i>No Thanks
+                                </button>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-3">View your number on screen anytime</p>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Paper Slot -->
-                <div
-                    class="absolute top-48 left-1/2 transform -translate-x-1/2 w-64 h-4 bg-gray-900 rounded-b-lg overflow-hidden">
-                    <div class="w-full h-full bg-gradient-to-b from-gray-700 to-gray-900"></div>
-                </div>
-
-                <!-- Animated Receipt -->
-                <div class="absolute top-52 left-1/2 transform -translate-x-1/2 overflow-hidden" style="height: 250px;">
-                    <div class="receipt-slide">
-                        <!-- Receipt Design -->
-                        <div class="w-64 bg-white shadow-2xl" style="font-family: 'Courier New', monospace;">
-                            <div class="p-4 text-center border-b-2 border-dashed border-gray-400">
-                                <div class="mb-2">
-                                    <p
-                                        style="font-family: 'Inter', sans-serif; font-weight: 300; font-size: 14px; letter-spacing: 2px;">
-                                        GERVACIOS</p>
-                                    <p style="font-family: 'Inter', sans-serif; font-size: 9px; letter-spacing: 1px;">
-                                        COFFEE & EATERY</p>
-                                </div>
-                                <p class="text-xs font-bold mt-2">CAFÉ GERVACIOS</p>
-                                <p class="text-xs">123 Coffee Street, Davao City</p>
-                                <p class="text-xs">Tel: (02) 8123-4567</p>
+                <!-- RIGHT COLUMN: Printer Animation & Receipt Preview -->
+                <div class="flex flex-col items-center justify-center">
+                    <!-- Printer Frame -->
+                    <div class="relative w-full max-w-sm" style="height: 380px;">
+                        <!-- Printer Box -->
+                        <div class="absolute top-0 left-1/2 transform -translate-x-1/2 w-64 h-32 rounded-t-2xl shadow-2xl" style="background-color: #09121E;">
+                            <!-- Printer Top Display -->
+                            <div class="absolute top-3 left-3 right-3 h-12 bg-gray-800 rounded-lg flex items-center justify-center">
+                                <div class="w-12 h-1.5 bg-green-500 rounded-full pulse-slow"></div>
                             </div>
-
-                            <div class="p-4 text-center border-b-2 border-dashed border-gray-400">
-                                <p class="text-sm font-bold mb-2">QUEUE RECEIPT</p>
-                                <p class="text-5xl font-bold" id="receiptQueueNumber">#{{ $customer->queue_number }}</p>
+                            <!-- Printer Icon Display -->
+                            <div class="absolute bottom-3 left-3 right-3 h-14 bg-black bg-opacity-50 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-print text-white text-2xl pulse-slow"></i>
                             </div>
+                        </div>
 
-                            <div class="px-4 py-3 text-xs space-y-1">
-                                <div class="flex justify-between">
-                                    <span class="font-semibold">Name:</span>
-                                    <span id="receiptName">{{ $customer->name }}</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="font-semibold">Party Size:</span>
-                                    <span id="receiptPartySize">{{ $customer->party_size }} pax</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="font-semibold">Priority:</span>
-                                    <span id="receiptPriority">{{ $customer->priority_type === 'normal' ? 'Regular' : ucfirst($customer->priority_type) }}</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="font-semibold">Time:</span>
-                                    <span id="receiptTime">{{ now()->format('d M Y - g:i A') }}</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="font-semibold">Est. Wait:</span>
-                                    <span id="receiptWaitTime">Updating...</span>
-                                </div>
-                            </div>
+                        <!-- Paper Slot -->
+                        <div class="absolute top-32 left-1/2 transform -translate-x-1/2 w-52 h-3 bg-black rounded-b-lg overflow-hidden">
+                            <div class="w-full h-full bg-gradient-to-b from-gray-700 to-black"></div>
+                        </div>
 
-                            <div class="px-4 pb-3 text-xs border-t-2 border-dashed border-gray-400 pt-3 space-y-2">
-                                <p>• Please stay nearby when your number is called.</p>
-                                <p>• Grace period: 5 minutes after your number is called.</p>
-                                <p>• Missed slots will be marked as skipped.</p>
-                            </div>
+                        <!-- Animated Receipt -->
+                        <div class="absolute top-36 left-1/2 transform -translate-x-1/2 overflow-hidden" style="height: 200px;">
+                            <div class="receipt-slide">
+                                <!-- Compact Receipt Design -->
+                                <div class="w-52 bg-white shadow-2xl text-xs" style="font-family: 'Courier New', monospace;">
+                                    <div class="p-3 text-center border-b border-dashed border-gray-400">
+                                        <p class="font-bold text-sm mb-1">GERVACIOS</p>
+                                        <p class="text-xs">COFFEE & EATERY</p>
+                                    </div>
 
-                            <div class="px-4 pb-4 text-center border-t-2 border-dashed border-gray-400 pt-3">
-                                <p class="text-xs font-bold">Thank you for visiting Café Gervacios!</p>
-                                <p class="text-xs mt-1">Enjoy your coffee while you wait.</p>
+                                    <div class="p-3 text-center border-b border-dashed border-gray-400">
+                                        <p class="text-xs font-bold mb-1">QUEUE RECEIPT</p>
+                                        <p class="text-4xl font-bold" id="receiptQueueNumber">#{{ $customer->queue_number }}</p>
+                                    </div>
+
+                                    <div class="px-3 py-2 text-xs space-y-0.5">
+                                        <div class="flex justify-between">
+                                            <span class="font-semibold">Name:</span>
+                                            <span id="receiptName">{{ $customer->name }}</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="font-semibold">Party:</span>
+                                            <span id="receiptPartySize">{{ $customer->party_size }} pax</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="font-semibold">Priority:</span>
+                                            <span id="receiptPriority">{{ $customer->priority_type === 'normal' ? 'Regular' : ucfirst($customer->priority_type) }}</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="font-semibold">Wait:</span>
+                                            <span id="receiptWaitTime">25-30 mins</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="px-3 pb-2 text-xs text-center border-t border-dashed border-gray-400 pt-2">
+                                        <p class="font-bold">Thank you!</p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-
-            <!-- Customer Print Decision -->
-            <div class="flex items-center justify-center space-x-3 px-8 py-4 bg-gray-100 rounded-full">
-                <div class="w-3 h-3 bg-gray-700 rounded-full animate-pulse"></div>
-                <span class="text-xl font-semibold text-gray-700" id="statusText">Preparing receipt...</span>
-            </div>
-            
-            <!-- Customer Print Decision Modal -->
-            <div id="customerPrintDecision" class="hidden mt-8 bg-white border-2 border-gray-200 rounded-2xl shadow-xl p-8">
-                <div class="text-center">
-                    <h3 class="text-2xl font-bold text-secondary mb-4">Print Your Receipt?</h3>
-                    <p class="text-lg text-gray-600 mb-6">Would you like to print your queue receipt?</p>
-                    <div class="flex space-x-6 justify-center">
-                        <button onclick="customerChoosePrint(true)" 
-                            class="px-8 py-4 bg-primary text-white rounded-xl hover:bg-primary-dark font-bold text-lg shadow-lg hover:shadow-xl transition-all">
-                            <i class="fas fa-print mr-3"></i>Yes, Print Receipt
-                        </button>
-                        <button onclick="customerChoosePrint(false)" 
-                            class="px-8 py-4 bg-gray-600 text-white rounded-xl hover:bg-gray-700 font-bold text-lg shadow-lg hover:shadow-xl transition-all">
-                            <i class="fas fa-times mr-3"></i>No, Skip Printing
-                        </button>
-                    </div>
-                    <p class="text-sm text-gray-600 mt-4">You can always view your queue number on the screen</p>
-                </div>
-            </div>
-            
         </div>
     </div>
 
-    <!-- Success State (Hidden initially) -->
-    <div class="flex-1 flex items-center justify-center overflow-hidden hidden" id="successState">
+    <!-- Success State (Hidden initially, NO SCROLL) -->
+    <div class="flex-1 flex items-center justify-center overflow-hidden bg-gray-100 hidden" id="successState">
         <div class="flex flex-col items-center text-center">
             <!-- Large Success Checkmark -->
-            <div
-                class="inline-flex items-center justify-center w-32 h-32 rounded-full bg-green-100 mb-8 checkmark-animate">
-                <i class="fas fa-check text-green-600 text-6xl"></i>
+            <div class="inline-flex items-center justify-center w-24 h-24 rounded-full bg-green-100 mb-6 checkmark-animate">
+                <i class="fas fa-check text-green-600 text-5xl"></i>
             </div>
 
-            <h2 class="text-5xl font-bold text-gray-800 mb-4">Registration Complete!</h2>
-            <p class="text-2xl text-gray-600 mb-8">Your queue number is ready</p>
+            <h2 class="text-4xl font-bold text-gray-800 mb-3">Registration Complete!</h2>
+            <p class="text-xl text-gray-600 mb-6">Your queue number is ready</p>
 
-            <div class="bg-gray-50 border-2 border-gray-200 rounded-xl px-12 py-8 mb-12">
-                <p class="text-xl text-gray-700">Your queue number: <span
-                        class="font-bold text-4xl text-gray-900" id="successQueueNumber">#{{ request('queue', '001') }}</span></p>
+            <div class="bg-white border-2 border-gray-200 rounded-xl px-10 py-6 mb-8 shadow-lg">
+                <p class="text-lg text-gray-700 mb-2">Your Queue Number</p>
+                <p class="font-bold text-5xl text-gray-900" style="color: #09121E;" id="successQueueNumber">#{{ request('queue', '001') }}</p>
             </div>
 
-            <!-- Action Buttons -->
-            <div class="w-full max-w-2xl">
-                <p class="text-2xl font-semibold text-gray-700 mb-6">Would you like to register another party?</p>
-            </div>
+            <!-- Single Line Question -->
+            <p class="text-2xl font-semibold text-gray-700 mb-2">Register another party?</p>
         </div>
     </div>
 
     <!-- Bottom Navigation Bar (Success State) -->
-    <div class="bg-white border-t-2 border-gray-200 px-8 py-4 flex-shrink-0 hidden" id="successBottomNav">
+    <div class="bg-white px-8 py-4 flex-shrink-0 shadow-lg hidden" id="successBottomNav">
         <div class="flex items-center justify-between max-w-6xl mx-auto">
             <!-- Register Another Button -->
             <button onclick="handleNewTransaction()"
-                class="px-16 py-5 bg-white hover:bg-gray-50 border-2 border-gray-300 text-gray-800 font-bold text-xl rounded-xl transition flex items-center space-x-3">
-                <i class="fas fa-plus text-2xl"></i>
+                class="px-12 py-4 bg-white hover:bg-gray-50 border-2 border-gray-300 text-gray-800 font-semibold text-lg rounded-xl transition-all duration-200 flex items-center space-x-2 shadow-md hover:shadow-lg">
+                <i class="fas fa-plus text-lg"></i>
                 <span>Yes, Register Another</span>
             </button>
 
             <!-- Finish Button -->
-            <button onclick="handleFinish()" style="background-color: #111827;"
-                class="px-16 py-5 hover:bg-gray-800 text-white font-bold text-xl rounded-xl shadow-lg transition flex items-center space-x-3">
+            <button onclick="handleFinish()"
+                class="px-12 py-4 text-white font-semibold text-lg rounded-xl shadow-xl transition-all duration-200 flex items-center space-x-2 hover:shadow-2xl hover:scale-105"
+                style="background-color: #09121E;">
                 <span>No, I'm Done</span>
-                <i class="fas fa-check text-2xl"></i>
+                <i class="fas fa-check text-lg"></i>
             </button>
         </div>
     </div>
 
     <!-- Footer - Auto redirect message -->
-    <div class="text-center pb-6 text-base text-gray-600" id="footerMessage">
+    <div class="text-center py-3 text-sm text-gray-600 bg-white" id="footerMessage">
         <p>Please wait...</p>
     </div>
 
