@@ -13,14 +13,6 @@
         tailwind.config = {
             theme: {
                 extend: {
-                    colors: {
-                        primary: '#6366f1',
-                        'primary-dark': '#4f46e5',
-                        secondary: '#2c3e50',
-                        accent: '#f59e0b',
-                        neutral: '#f5f7fa',
-                        'neutral-dark': '#e3e8ef'
-                    },
                     fontFamily: {
                         'inter': ['Inter', 'sans-serif']
                     }
@@ -36,6 +28,7 @@
             -webkit-user-select: none;
             user-select: none;
             font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e8edf2 100%);
         }
     </style>
 </head>
@@ -43,108 +36,117 @@
 <body class="font-inter bg-white h-screen flex flex-col">
     <!-- Header -->
     <div class="flex-shrink-0" style="background-color: #111827;">
-        <div class="p-6 flex items-center justify-between">
+        <div class="px-8 py-4 flex items-center justify-between">
             <div class="flex items-center space-x-4">
                 <div>
-                    <div class="flex items-center space-x-3 mb-1">
-                        <h1 class="text-2xl font-bold text-white">Review Your Details</h1>
-                        <span class="px-3 py-1 text-white text-xs font-semibold rounded-full"
-                            style="background-color: #374151;">Step 2 of 4</span>
+                    <div class="flex items-center space-x-3 mb-0.5">
+                        <h1 class="text-xl font-semibold text-white">Review Your Details</h1>
+                        <span class="px-2.5 py-0.5 text-white text-xs font-semibold rounded-full"
+                            style="background-color: rgba(255, 255, 255, 0.15);">Step 2 of 4</span>
                     </div>
-                    <p class="text-gray-300 text-sm">Please confirm your information before proceeding</p>
+                    <p class="text-gray-300 text-xs">Please confirm your information before proceeding</p>
                 </div>
             </div>
             <div class="flex items-center space-x-6">
                 <div class="text-right">
-                    <p class="text-white text-2xl font-bold" id="time">3:24 PM</p>
-                    <p class="text-gray-300 text-sm" id="date">Sep 16, 2025</p>
+                    <p class="text-white text-xl font-bold" id="time">3:24 PM</p>
+                    <p class="text-gray-300 text-xs" id="date">Sep 16, 2025</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Main Content -->
-    <div class="flex-1 flex items-center justify-center p-8 overflow-auto">
-        <div class="w-full max-w-3xl">
-            <!-- Info Icon -->
-            <div class="flex justify-center mb-6">
-                <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-blue-100">
-                    <i class="fas fa-clipboard-check text-primary text-4xl"></i>
+    <!-- Main Content - NO SCROLL, Single View -->
+    <div class="flex-1 flex items-center justify-center px-8 py-4 bg-gray-100 overflow-hidden">
+        <div class="w-full max-w-6xl mx-auto grid grid-cols-2 gap-6 h-full items-center">
+
+            <!-- LEFT COLUMN: User Details -->
+            <div
+                class="bg-white border-2 border-gray-200 rounded-2xl shadow-lg p-5 h-full flex flex-col justify-center">
+                <div class="flex items-center justify-center mb-4">
+                    <div class="inline-flex items-center justify-center w-12 h-12 rounded-full"
+                        style="background-color: rgba(17, 24, 39, 0.1);">
+                        <i class="fas fa-clipboard-check text-2xl" style="color: #111827;"></i>
+                    </div>
                 </div>
-            </div>
 
-            <h2 class="text-3xl font-bold text-gray-800 text-center mb-3">Please Review Your Information</h2>
-            <p class="text-lg text-gray-600 text-center mb-10">Make sure everything is correct before confirming</p>
+                <h2 class="text-xl font-bold text-gray-800 text-center mb-1">Your Information</h2>
+                <p class="text-sm text-gray-600 text-center mb-5">Review and edit if needed</p>
 
-            <!-- Details Card -->
-            <div class="bg-white border-2 border-gray-200 rounded-2xl shadow-xl p-8 mb-8">
-                <div class="space-y-6">
+                <div class="space-y-4">
                     <!-- Name -->
-                    <div class="flex items-start justify-between pb-6 border-b border-gray-300">
-                        <div class="flex items-start space-x-4">
-                            <div class="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 bg-gray-800">
-                                <i class="fas fa-user text-white"></i>
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+                                style="background-color: #111827;">
+                                <i class="fas fa-user text-white text-xs"></i>
                             </div>
                             <div>
-                                <p class="text-sm text-gray-500 font-medium mb-1">Name/Nickname</p>
-                                <p class="text-2xl font-bold text-gray-800" id="reviewName">{{ $customer->name ?? 'Guest' }}</p>
+                                <p class="text-xs text-gray-500 font-medium">Name/Nickname</p>
+                                <p class="text-base font-bold text-gray-800" id="reviewName">{{ $customer->name ?? 'Guest' }}</p>
                             </div>
                         </div>
-                        <button onclick="editField('name')" class="text-primary hover:text-primary-dark transition">
-                            <i class="fas fa-edit text-xl"></i>
+                        <button onclick="editField('name')" class="hover:opacity-80 transition p-2"
+                            style="color: #111827;">
+                            <i class="fas fa-edit text-base"></i>
                         </button>
                     </div>
 
                     <!-- Party Size -->
-                    <div class="flex items-start justify-between pb-6 border-b border-gray-300">
-                        <div class="flex items-start space-x-4">
-                            <div class="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 bg-gray-800">
-                                <i class="fas fa-users text-white"></i>
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+                                style="background-color: #111827;">
+                                <i class="fas fa-users text-white text-xs"></i>
                             </div>
                             <div>
-                                <p class="text-sm text-gray-500 font-medium mb-1">Party Size</p>
-                                <p class="text-2xl font-bold text-gray-800" id="reviewPartySize">{{ $customer->party_size ?? '1' }} {{ ($customer->party_size ?? 1) == 1 ? 'Guest' : 'Guests' }}</p>
+                                <p class="text-xs text-gray-500 font-medium">Party Size</p>
+                                <p class="text-base font-bold text-gray-800" id="reviewPartySize">{{ $customer->party_size ?? '1' }} {{ ($customer->party_size ?? 1) == 1 ? 'Guest' : 'Guests' }}</p>
                             </div>
                         </div>
-                        <button onclick="editField('party')" class="text-primary hover:text-primary-dark transition">
-                            <i class="fas fa-edit text-xl"></i>
+                        <button onclick="editField('party')" class="hover:opacity-80 transition p-2"
+                            style="color: #111827;">
+                            <i class="fas fa-edit text-base"></i>
                         </button>
                     </div>
 
                     <!-- Contact Number -->
-                    <div class="flex items-start justify-between pb-6 border-b border-gray-300">
-                        <div class="flex items-start space-x-4">
-                            <div class="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 bg-gray-800">
-                                <i class="fas fa-phone text-white"></i>
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+                                style="background-color: #111827;">
+                                <i class="fas fa-phone text-white text-xs"></i>
                             </div>
                             <div>
-                                <p class="text-sm text-gray-500 font-medium mb-1">Contact Number</p>
-                                <p class="text-2xl font-bold text-gray-800" id="reviewContact">{{ $customer->contact_number ?? 'Not provided' }}</p>
+                                <p class="text-xs text-gray-500 font-medium">Contact Number</p>
+                                <p class="text-base font-bold text-gray-800" id="reviewContact">{{ $customer->contact_number ?? 'Not provided' }}</p>
                             </div>
                         </div>
-                        <button onclick="editField('contact')" class="text-primary hover:text-primary-dark transition">
-                            <i class="fas fa-edit text-xl"></i>
+                        <button onclick="editField('contact')" class="hover:opacity-80 transition p-2"
+                            style="color: #111827;">
+                            <i class="fas fa-edit text-base"></i>
                         </button>
                     </div>
 
                     <!-- Priority Status -->
-                    <div class="flex items-start justify-between">
-                        <div class="flex items-start space-x-4">
-                            <div class="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 bg-gray-800">
-                                <i class="fas fa-star text-white"></i>
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+                                style="background-color: #111827;">
+                                <i class="fas fa-star text-white text-xs"></i>
                             </div>
                             <div>
-                                <p class="text-sm text-gray-500 font-medium mb-1">Priority Status</p>
+                                <p class="text-xs text-gray-500 font-medium">Priority Status</p>
                                 @if($customer->id_verification_status === 'skipped_priority')
                                     <div class="flex items-center space-x-2">
-                                        <p class="text-2xl font-bold text-gray-800">Regular Guest</p>
-                                        <span class="px-3 py-1 bg-amber-100 text-amber-700 text-sm font-semibold rounded-full">Priority Skipped</span>
+                                        <p class="text-base font-bold text-gray-800">Regular Guest</p>
+                                        <span
+                                            class="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-semibold rounded-full">Priority Skipped</span>
                                     </div>
-                                    <p class="text-sm text-gray-600 mt-1">Converted to regular customer - no priority assistance</p>
                                 @elseif($customer->has_priority_member ?? false)
                                     <div class="flex items-center space-x-2">
-                                        <p class="text-2xl font-bold text-gray-800">{{ ucfirst($customer->priority_type ?? 'Priority') }} Guest</p>
-                                        <span class="px-3 py-1 bg-green-100 text-green-700 text-sm font-semibold rounded-full">
+                                        <p class="text-base font-bold text-gray-800">{{ ucfirst($customer->priority_type ?? 'Priority') }} Guest</p>
+                                        <span class="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-semibold rounded-full">
                                             @if($customer->id_verification_status === 'verified')
                                                 ✓ Verified
                                             @else
@@ -152,78 +154,79 @@
                                             @endif
                                         </span>
                                     </div>
-                                    @if($customer->priority_type === 'pregnant')
-                                        <p class="text-sm text-gray-600 mt-1">Pregnancy priority confirmed - no ID verification needed</p>
-                                    @else
-                                        <p class="text-sm text-gray-600 mt-1">Priority assistance available - ID verification required</p>
-                                    @endif
                                 @else
                                     <div class="flex items-center space-x-2">
-                                        <p class="text-2xl font-bold text-gray-800">Regular Guest</p>
-                                        <span class="px-3 py-1 bg-blue-100 text-blue-700 text-sm font-semibold rounded-full">Standard</span>
+                                        <p class="text-base font-bold text-gray-800">Regular Guest</p>
+                                        <span
+                                            class="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">Standard</span>
                                     </div>
-                                    <p class="text-sm text-gray-600 mt-1">No priority assistance required</p>
                                 @endif
                             </div>
                         </div>
-                        <button onclick="editField('priority')" class="text-primary hover:text-primary-dark transition">
-                            <i class="fas fa-edit text-xl"></i>
+                        <button onclick="editField('priority')" class="hover:opacity-80 transition p-2"
+                            style="color: #111827;">
+                            <i class="fas fa-edit text-base"></i>
                         </button>
                     </div>
                 </div>
             </div>
 
-            <!-- Queue Information -->
-            <div class="bg-white border-2 border-gray-200 rounded-2xl shadow-xl p-6 mb-8" x-data="queueUpdater({{ $customer->id }})">
+            <!-- RIGHT COLUMN: Queue Information -->
+            <div class="bg-white border-2 border-gray-200 rounded-2xl shadow-lg p-6 h-full flex flex-col justify-center"
+                x-data="queueUpdater({{ $customer->id }})">
                 <div class="text-center">
-                    <!-- Queue Number -->
+                    <!-- Queue Number - Large & Prominent -->
                     <div class="mb-6">
-                        <p class="text-sm text-secondary font-medium">Your Queue Number</p>
-                        <p class="text-5xl font-bold text-primary">#{{ $customer->queue_number }}</p>
+                        <p class="text-sm font-medium mb-2" style="color: #111827;">Your Queue Number</p>
+                        <p class="text-7xl font-bold mb-2" style="color: #111827;">#{{ $customer->queue_number }}</p>
                     </div>
-                    
-                    <!-- Customers Ahead (Dynamic) -->
-                    <div class="customers-ahead-section mb-6">
-                        <div class="flex items-center justify-center gap-3">
-                            <i class="fas fa-users text-2xl text-primary"></i>
-                            <div>
-                                <p class="text-sm text-gray-600">Customers ahead of you</p>
-                                <p class="text-3xl font-bold text-primary" x-text="customersAhead">
+
+                    <!-- Divider -->
+                    <div class="border-t-2 border-gray-200 my-6"></div>
+
+                    <!-- Customers Ahead & Wait Time - Side by Side -->
+                    <div class="grid grid-cols-2 gap-6">
+                        <!-- Customers Ahead -->
+                        <div class="customers-ahead-section">
+                            <div class="flex flex-col items-center">
+                                <i class="fas fa-users text-3xl mb-2" style="color: #111827;"></i>
+                                <p class="text-xs text-gray-600 mb-1">Customers Ahead</p>
+                                <p class="text-4xl font-bold mb-2" style="color: #111827;" x-text="customersAhead">
                                     {{ $queueInfo['customers_ahead'] ?? 0 }}
                                 </p>
-                            </div>
-                        </div>
-                        <p class="text-xs text-gray-500 mt-2" x-show="customersAhead > 0">
-                            <span x-text="customersAhead"></span> 
-                            <span x-text="customersAhead === 1 ? 'person is' : 'people are'"></span> 
-                            waiting before you
-                        </p>
-                        <p class="text-xs text-green-600 mt-2 font-semibold" x-show="customersAhead === 0">
-                            🎉 You're next in line!
-                        </p>
-                    </div>
-                    
-                    <!-- Wait Time (Dynamic) -->
-                    <div class="wait-time-section">
-                        <div class="flex items-center justify-center gap-3">
-                            <i class="fas fa-clock text-2xl text-primary"></i>
-                            <div>
-                                <p class="text-sm text-gray-600">Estimated Wait Time</p>
-                                <p class="text-2xl font-bold text-primary" x-text="waitTimeFormatted">
-                                    {{ $formattedWait }}
+                                <p class="text-xs text-gray-500" x-show="customersAhead > 0">
+                                    <span x-text="customersAhead"></span>
+                                    <span x-text="customersAhead === 1 ? 'person' : 'people'"></span> waiting
+                                </p>
+                                <p class="text-xs text-green-600 font-semibold" x-show="customersAhead === 0">
+                                    You're next!
                                 </p>
                             </div>
                         </div>
-                        <p class="text-xs text-gray-500 mt-2">
-                            Updates automatically when tables are freed
-                        </p>
+
+                        <!-- Wait Time -->
+                        <div class="wait-time-section">
+                            <div class="flex flex-col items-center">
+                                <i class="fas fa-clock text-3xl mb-2" style="color: #111827;"></i>
+                                <p class="text-xs text-gray-600 mb-1">Estimated Wait</p>
+                                <p class="text-4xl font-bold mb-2" style="color: #111827;" x-text="waitTimeFormatted">
+                                    {{ $formattedWait }}
+                                </p>
+                                <p class="text-xs text-gray-500">minutes</p>
+                            </div>
+                        </div>
                     </div>
-                    
+
+                    <!-- Divider -->
+                    <div class="border-t-2 border-gray-200 my-6"></div>
+
                     <!-- Last Updated -->
-                    <div class="text-center mt-4">
+                    <div class="text-center">
                         <p class="text-xs text-gray-400">
+                            <i class="fas fa-sync-alt mr-1"></i>
                             Last updated: <span x-text="lastUpdated">{{ now()->format('g:i A') }}</span>
                         </p>
+                        <p class="text-xs text-gray-500 mt-1">Updates automatically</p>
                     </div>
                 </div>
             </div>
@@ -231,20 +234,21 @@
     </div>
 
     <!-- Bottom Navigation Bar -->
-    <div class="bg-white border-t-2 border-gray-200 px-8 py-4 flex-shrink-0">
+    <div class="bg-white px-8 py-4 flex-shrink-0 shadow-lg">
         <div class="flex items-center justify-between max-w-6xl mx-auto">
             <!-- Back Button -->
             <button onclick="goBack()"
-                class="px-16 py-5 bg-white hover:bg-gray-50 border-2 border-gray-300 text-gray-800 font-bold text-xl rounded-xl transition flex items-center space-x-3">
-                <i class="fas fa-arrow-left text-2xl"></i>
+                class="px-12 py-4 bg-white hover:bg-gray-50 border-2 border-gray-300 text-gray-800 font-semibold text-lg rounded-xl transition-all duration-200 flex items-center space-x-2 shadow-md hover:shadow-lg">
+                <i class="fas fa-arrow-left text-lg"></i>
                 <span>Go Back</span>
             </button>
 
             <!-- Continue Button -->
-            <button type="button" onclick="confirmAndPrint()" style="background-color: #111827;"
-                class="px-16 py-5 hover:bg-gray-800 text-white font-bold text-xl rounded-xl shadow-lg transition flex items-center space-x-3">
+            <button type="button" onclick="confirmAndPrint()"
+                class="px-12 py-4 text-white font-semibold text-lg rounded-xl shadow-xl transition-all duration-200 flex items-center space-x-2 hover:shadow-2xl hover:scale-105"
+                style="background-color: #111827;">
                 <span>Confirm & Print Receipt</span>
-                <i class="fas fa-check text-2xl"></i>
+                <i class="fas fa-check text-lg"></i>
             </button>
         </div>
     </div>
@@ -381,3 +385,4 @@
 </body>
 
 </html>
+
