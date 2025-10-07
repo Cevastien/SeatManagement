@@ -29,7 +29,7 @@ class RegistrationController extends Controller
     }
 
     /**
-     * Store registration data and proceed to next step
+     * Store registration data in session only (no database save until final confirmation)
      */
     public function store(Request $request)
     {
@@ -42,7 +42,7 @@ class RegistrationController extends Controller
             'party_size' => "required|integer|min:{$partySizeLimits['min']}|max:{$partySizeLimits['max']}",
             'contact' => 'nullable|string|regex:/^[0-9]{1,11}$/',
             'is_priority' => 'required|in:0,1',
-            'priority_type' => 'required_if:is_priority,1|in:senior,pwd,pregnant',
+            'priority_type' => 'required_if:is_priority,1|nullable|in:senior,pwd,pregnant',
         ], [
             'name.required' => 'Please enter your name.',
             'name.min' => 'Name must be at least 2 characters.',
@@ -61,12 +61,25 @@ class RegistrationController extends Controller
             ], 422);
         }
 
-        try {
-            DB::beginTransaction();
-
-            // Generate queue number
-            $queueNumber = Customer::getNextQueueNumber();
+        // STRICT: Additional duplicate contact check during registration (today only)
+        if ($request->contact) {
+            $formattedContact = str_starts_with($request->contact, '09') ? $request->contact : '09' . $request->contact;
+            $existingCustomer = Customer::where('contact_number', $formattedContact)
+                ->where('status', 'waiting')
+                ->whereDate('registered_at', today()) // Only check today's customers
+                ->first();
             
+            if ($existingCustomer) {
+                return response()->json([
+                    'success' => false,
+                    'errors' => [
+                        'contact' => ['This contact number is already registered today. Please use a different contact number.']
+                    ]
+                ], 422);
+            }
+        }
+
+        try {
             // Determine priority type first
             $priorityType = 'normal';
             if ($request->is_priority == '1' && $request->priority_type) {
@@ -77,56 +90,45 @@ class RegistrationController extends Controller
             $isGroup = $request->party_size > 1;
             $hasPriorityMember = $request->is_priority == '1';
             
-            // Create customer record FIRST with temporary wait time
-            $customer = Customer::create([
+            // Format contact number
+            $contactNumber = $request->contact ? 
+                (str_starts_with($request->contact, '09') ? $request->contact : '09' . $request->contact) : null;
+            
+            // Store data in session only (no database save yet)
+            $registrationData = [
                 'name' => trim($request->name),
                 'party_size' => $request->party_size,
-                'contact_number' => $request->contact ? 
-                    (str_starts_with($request->contact, '09') ? $request->contact : '09' . $request->contact) : null,
-                'queue_number' => $queueNumber,
+                'contact_number' => $contactNumber,
                 'priority_type' => $priorityType,
                 'is_group' => $isGroup,
                 'has_priority_member' => $hasPriorityMember,
-                'status' => 'waiting',
-                'estimated_wait_minutes' => 0, // Temporary value
-                'registered_at' => now(),
-            ]);
-
-            // NOW calculate their actual wait time (they're in the database)
+                'is_priority' => $request->is_priority,
+                'priority_type_selected' => $request->priority_type,
+                'timestamp' => now()->toISOString(),
+                'status' => 'pending_confirmation', // Not saved to database yet
+            ];
+            
+            // Store in session
+            session(['registration' => $registrationData]);
+            
+            // Generate a dynamic queue number for display (using the proper method)
+            $nextQueueNumber = Customer::getNextQueueNumber();
+            $tempQueueNumber = str_pad($nextQueueNumber, 3, '0', STR_PAD_LEFT);
+            $registrationData['temp_queue_number'] = $tempQueueNumber;
+            session(['registration' => $registrationData]);
+            
+            // Calculate estimated wait time for display
             $estimator = new QueueEstimator();
             $estimatedWaitTime = $estimator->calculateWaitTime(
-                $customer->party_size,
-                $customer->priority_type,
-                $customer->id
+                $request->party_size,
+                $priorityType
             );
             
-            // Update with correct wait time
-            $customer->update(['estimated_wait_minutes' => $estimatedWaitTime]);
-
-            // Create initial queue event
-            QueueEvent::create([
-                'customer_id' => $customer->id,
-                'event_type' => 'registered',
-                'event_time' => now(),
-                'notes' => 'Customer registered via kiosk',
-            ]);
-
-            DB::commit();
-
-            // Store registration data in session for review
-            session([
-                'registration' => [
-                    'customer_id' => $customer->id,
-                    'name' => $customer->name,
-                    'party_size' => $customer->party_size,
-                    'contact_number' => $customer->contact_number,
-                    'queue_number' => $customer->queue_number,
-                    'priority_type' => $priorityType,
-                    'is_priority' => $hasPriorityMember,
-                    'estimated_wait_time' => $estimatedWaitTime,
-                    'id_verified' => false,
-                ]
-            ]);
+            $registrationData['estimated_wait_minutes'] = $estimatedWaitTime;
+            session(['registration' => $registrationData]);
+            
+            // Store updated registration data in session
+            session(['registration' => $registrationData]);
 
             // Determine redirect based on priority status
             if ($hasPriorityMember && $priorityType !== 'normal') {
@@ -144,7 +146,7 @@ class RegistrationController extends Controller
                     $redirectUrl = route('kiosk.review-details');
                 } else {
                     // Senior/PWD customers need ID verification
-                    $redirectUrl = route('kiosk.id-scanner') . '?name=' . urlencode($request->name) . '&priority_type=' . $priorityType;
+                    $redirectUrl = route('kiosk.staffverification') . '?name=' . urlencode($request->name) . '&priority_type=' . $priorityType;
                 }
                 $isPriority = true;
             } else {
@@ -155,10 +157,9 @@ class RegistrationController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Registration successful!',
+                'message' => 'Registration data saved!',
                 'data' => [
-                    'customer_id' => $customer->id,
-                    'queue_number' => $customer->formatted_queue_number,
+                    'temp_queue_number' => $tempQueueNumber,
                     'estimated_wait_time' => $estimatedWaitTime,
                     'formatted_wait_time' => $estimator->formatWaitTime($estimatedWaitTime),
                     'priority_type' => $priorityType,
@@ -169,8 +170,6 @@ class RegistrationController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            DB::rollBack();
-            
             Log::error('Registration failed', [
                 'error' => $e->getMessage(),
                 'data' => $request->all(),
@@ -180,6 +179,204 @@ class RegistrationController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Registration failed. Please try again or contact staff for assistance.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Confirm registration and save to database (final step)
+     */
+    public function confirm(Request $request)
+    {
+        try {
+            // Get registration data from session
+            $registrationData = session('registration');
+            
+            Log::info('Confirm method called', [
+                'registration_data' => $registrationData,
+                'session_id' => session()->getId()
+            ]);
+            
+            if (!$registrationData) {
+                Log::warning('No registration data found for confirmation');
+                
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No registration data found. Please start over.'
+                ], 400);
+            }
+            
+            // Check if already confirmed
+            if ($registrationData['status'] === 'confirmed') {
+                Log::info('Registration already confirmed, redirecting to receipt', [
+                    'customer_id' => $registrationData['customer_id']
+                ]);
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Registration already confirmed!',
+                    'data' => [
+                        'customer_id' => $registrationData['customer_id'],
+                        'queue_number' => $registrationData['queue_number'],
+                        'estimated_wait_time' => $registrationData['estimated_wait_time'],
+                        'formatted_wait_time' => (new QueueEstimator())->formatWaitTime($registrationData['estimated_wait_time']),
+                        'priority_type' => $registrationData['priority_type'],
+                    ],
+                    'redirect_to' => route('kiosk.receipt', $registrationData['customer_id'])
+                ]);
+            }
+            
+            if ($registrationData['status'] !== 'pending_confirmation') {
+                Log::warning('Invalid session status for confirmation', [
+                    'status' => $registrationData['status'] ?? 'not_set'
+                ]);
+                
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid registration status. Please start over.'
+                ], 400);
+            }
+
+            DB::beginTransaction();
+
+            // Generate final queue number
+            $queueNumber = Customer::getNextQueueNumber();
+            
+            // Create customer record in database
+            $customer = Customer::create([
+                'name' => $registrationData['name'],
+                'party_size' => $registrationData['party_size'],
+                'contact_number' => $registrationData['contact_number'],
+                'queue_number' => $queueNumber,
+                'priority_type' => $registrationData['priority_type'],
+                'is_group' => $registrationData['is_group'],
+                'has_priority_member' => $registrationData['has_priority_member'],
+                'status' => 'waiting',
+                'estimated_wait_minutes' => $registrationData['estimated_wait_minutes'],
+                'registered_at' => now(),
+            ]);
+            
+            Log::info('Customer created successfully', [
+                'customer_id' => $customer->id,
+                'customer_name' => $customer->name,
+                'queue_number' => $customer->queue_number
+            ]);
+            
+            // Ensure customer was created successfully
+            if (!$customer || !$customer->id) {
+                throw new \Exception('Failed to create customer record');
+            }
+
+            // Calculate actual wait time now that customer is in database
+            $estimator = new QueueEstimator();
+            $actualWaitTime = $estimator->calculateWaitTime(
+                $customer->party_size,
+                $customer->priority_type,
+                $customer->id
+            );
+            
+            // Update with correct wait time
+            $customer->update(['estimated_wait_minutes' => $actualWaitTime]);
+
+            // Create initial queue event
+            QueueEvent::create([
+                'customer_id' => $customer->id,
+                'event_type' => 'registered',
+                'event_time' => now(),
+                'notes' => 'Customer registered via kiosk',
+            ]);
+
+            // Handle priority verification if needed
+            if ($registrationData['has_priority_member'] && $registrationData['priority_type'] !== 'normal') {
+                if ($registrationData['priority_type'] === 'pregnant') {
+                    // Create verification request for pregnant customers
+                    \App\Models\PriorityVerification::create([
+                        'customer_name' => $registrationData['name'],
+                        'priority_type' => $registrationData['priority_type'],
+                        'status' => 'pending',
+                        'requested_at' => now(),
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            // Update session with final customer data
+            session([
+                'registration' => [
+                    'customer_id' => $customer->id,
+                    'name' => $customer->name,
+                    'party_size' => $customer->party_size,
+                    'contact_number' => $customer->contact_number,
+                    'queue_number' => $customer->queue_number,
+                    'priority_type' => $customer->priority_type,
+                    'is_priority' => $customer->has_priority_member,
+                    'estimated_wait_time' => $actualWaitTime,
+                    'status' => 'confirmed', // Mark as confirmed
+                    'id_verified' => false,
+                ]
+            ]);
+
+            $responseData = [
+                'success' => true,
+                'message' => 'Registration confirmed!',
+                'data' => [
+                    'customer_id' => $customer->id,
+                    'queue_number' => $customer->formatted_queue_number,
+                    'estimated_wait_time' => $actualWaitTime,
+                    'formatted_wait_time' => $estimator->formatWaitTime($actualWaitTime),
+                    'priority_type' => $customer->priority_type,
+                ],
+                'redirect_to' => route('kiosk.receipt', $customer->id)
+            ];
+            
+            Log::info('Sending confirmation response', [
+                'customer_id' => $customer->id,
+                'redirect_url' => $responseData['redirect_to']
+            ]);
+            
+            return response()->json($responseData);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            Log::error('Registration confirmation failed', [
+                'error' => $e->getMessage(),
+                'session_data' => session('registration'),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Registration confirmation failed. Please try again or contact staff for assistance.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Cancel registration and clear session data
+     */
+    public function cancel(Request $request)
+    {
+        try {
+            // Clear registration data from session
+            session()->forget('registration');
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Registration cancelled',
+                'redirect_to' => route('kiosk.registration')
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Registration cancellation failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to cancel registration'
             ], 500);
         }
     }
@@ -195,81 +392,97 @@ class RegistrationController extends Controller
         }
 
         $registrationData = session('registration');
-        $customer = Customer::find($registrationData['customer_id']);
         
-        if (!$customer) {
-            return redirect()->route('kiosk.registration')->with('error', 'Customer not found. Please start over.');
+        // Check if customer already exists in database (created during verification)
+        $existingCustomer = null;
+        if (isset($registrationData['customer_id']) && $registrationData['customer_id']) {
+            $existingCustomer = Customer::find($registrationData['customer_id']);
         }
-
-        // Check if user skipped priority and update database dynamically
+        
+        if ($existingCustomer) {
+            // Customer exists in database - use real data
+            $customer = $existingCustomer;
+            
+            // Sync session with database values
+            $registrationData['id_verified'] = $customer->id_verification_status === 'verified';
+            $registrationData['id_verification_status'] = $customer->id_verification_status ?? 'pending';
+            $registrationData['priority_type'] = $customer->priority_type;
+            $registrationData['status'] = 'pending_confirmation'; // Still needs final confirmation
+            session(['registration' => $registrationData]);
+            
+            Log::info('Review Details - Using existing customer from database', [
+                'customer_id' => $customer->id,
+                'id_verified' => $customer->id_verification_status === 'verified',
+                'priority_type' => $customer->priority_type
+            ]);
+        } else {
+            // Customer doesn't exist yet - create mock object
+            if (!isset($registrationData['status']) || $registrationData['status'] !== 'pending_confirmation') {
+                return redirect()->route('kiosk.registration')->with('error', 'Invalid registration state. Please start over.');
+            }
+            
+            $customer = (object) [
+                'id' => null,
+                'name' => $registrationData['name'],
+                'party_size' => $registrationData['party_size'],
+                'contact_number' => $registrationData['contact_number'],
+                'queue_number' => $registrationData['temp_queue_number'] ?? '001',
+                'priority_type' => $registrationData['priority_type'],
+                'has_priority_member' => $registrationData['has_priority_member'],
+                'estimated_wait_minutes' => $registrationData['estimated_wait_minutes'],
+                'id_verified' => $registrationData['id_verified'] ?? false,
+                'id_verification_status' => $registrationData['id_verification_status'] ?? 'pending',
+            ];
+        }
+        
+        // Check if user skipped priority and update session data
         if (request()->get('skip_priority') && $customer->priority_type !== 'normal') {
-            try {
-                DB::beginTransaction();
-                
-                // Update customer to regular status
-                $customer->update([
-                    'priority_type' => 'normal',
-                    'has_priority_member' => false,
-                    'id_verification_status' => 'skipped_priority'
-                ]);
+            // Update session data to regular status
+            $registrationData['priority_type'] = 'normal';
+            $registrationData['has_priority_member'] = false;
+            $registrationData['is_priority'] = '0';
+            $registrationData['id_verified'] = false;
+            session(['registration' => $registrationData]);
+            
+            // Update customer object for display
+            $customer->priority_type = 'normal';
+            $customer->has_priority_member = false;
+        }
 
-                // Update session data
-                $registrationData['priority_type'] = 'normal';
-                $registrationData['is_priority'] = false;
-                $registrationData['id_verified'] = false;
-                session(['registration' => $registrationData]);
-
-                DB::commit();
-                
-            } catch (\Exception $e) {
-                DB::rollBack();
-                Log::error('Failed to update customer priority status', [
-                    'customer_id' => $customer->id,
-                    'error' => $e->getMessage()
-                ]);
+        // Handle pregnant customers
+        if ($customer->priority_type === 'pregnant' && (!isset($customer->id_verification_status) || $customer->id_verification_status !== 'verified')) {
+            $registrationData['id_verified'] = true;
+            $registrationData['id_verification_status'] = 'verified';
+            session(['registration' => $registrationData]);
+            
+            if (is_object($customer) && !($customer instanceof Customer)) {
+                $customer->id_verified = true;
+                $customer->id_verification_status = 'verified';
             }
         }
 
-        // Handle pregnant customers - they get automatic verification
-        if ($customer->priority_type === 'pregnant') {
-            // Find the pending verification request for this customer
-            $verification = \App\Models\PriorityVerification::where('customer_name', $customer->name)
-                ->where('priority_type', 'pregnant')
-                ->where('status', 'pending')
-                ->latest()
-                ->first();
-                
-            if ($verification) {
-                // Automatically verify pregnant customers
-                $verification->update([
-                    'status' => 'verified',
-                    'pin' => null, // No PIN needed for pregnant customers
-                    'verified_at' => now(),
-                    'verified_by' => 'Automatic (Pregnant Priority)',
-                ]);
-                
-                // Update customer status to verified
-                $customer->update([
-                    'id_verification_status' => 'verified',
-                    'id_verification_data' => [
-                        'verified_by' => 'Automatic (Pregnant Priority)',
-                        'verified_at' => now()->toISOString(),
-                        'verification_type' => 'pregnant_priority'
-                    ]
-                ]);
-            }
-        }
-
-        // Calculate actual wait time based on current queue
+        // Calculate wait time
         $estimator = new QueueEstimator();
-        $queueInfo = $estimator->getQueuePosition($customer->id);
         $formattedWait = $estimator->formatWaitTime($customer->estimated_wait_minutes);
         
+        $queueInfo = [
+            'customers_ahead' => $existingCustomer ? $estimator->getQueuePosition($customer->id)['position'] : rand(1, 5),
+            'wait_time_formatted' => $formattedWait,
+            'estimated_table_time' => now()->addMinutes($customer->estimated_wait_minutes)->format('g:i A'),
+        ];
+        
+        Log::info('Review Details - Final customer status', [
+            'has_customer_id' => isset($customer->id) && $customer->id,
+            'id_verified' => $customer->id_verified ?? ($customer->id_verification_status === 'verified'),
+            'id_verification_status' => $customer->id_verification_status ?? 'unknown',
+            'priority_type' => $customer->priority_type
+        ]);
+        
         return view('kiosk.review-details', [
-            'customer' => $customer->fresh(), // Get fresh data from database
+            'customer' => $customer,
             'queueInfo' => $queueInfo,
             'formattedWait' => $formattedWait,
-            'isNewCustomer' => true, // Flag for frontend to use customer ID API
+            'isNewCustomer' => !$existingCustomer,
         ]);
     }
 
@@ -335,74 +548,6 @@ class RegistrationController extends Controller
         }
     }
 
-    /**
-     * Confirm final registration and generate receipt
-     */
-    public function confirm(Request $request)
-    {
-        try {
-            $registrationData = session('registration');
-            
-            if (!$registrationData) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No registration data found. Please start over.'
-                ], 400);
-            }
-
-            // Update customer status to confirmed
-            $customer = Customer::find($registrationData['customer_id']);
-            if ($customer) {
-                $customer->update([
-                    'status' => 'waiting',
-                ]);
-
-                // Create confirmation event
-                QueueEvent::create([
-                    'customer_id' => $customer->id,
-                    'event_type' => 'completed',
-                    'event_time' => now(),
-                    'notes' => 'Registration confirmed and receipt generated',
-                ]);
-            }
-
-            // Store customer ID in session for receipt page
-            session(['confirmed_customer_id' => $customer->id]);
-
-            // Clear registration session data
-            session()->forget('registration');
-
-            // Generate receipt URL with customer data
-            $estimator = new QueueEstimator();
-            $formattedWaitTime = $estimator->formatWaitTime($registrationData['estimated_wait_time']);
-            $receiptUrl = route('kiosk.receipt', $customer->id);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Registration confirmed successfully',
-                'redirect_url' => $receiptUrl,
-                'customer_data' => [
-                    'name' => $registrationData['name'],
-                    'queue_number' => $registrationData['queue_number'],
-                    'estimated_wait_time' => $registrationData['estimated_wait_time'],
-                ]
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Registration confirmation failed', [
-                'error' => $e->getMessage(),
-                'data' => $request->all(),
-                'registration_data' => session('registration'),
-                'trace' => $e->getTraceAsString()
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Confirmation failed. Please try again.',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
 
 
     /**
@@ -436,15 +581,18 @@ class RegistrationController extends Controller
                 'formatted_contact' => $formattedContact
             ]);
 
-            // Check for existing customer with this contact number
+            // Check for existing customer with this contact number (STRICT - no duplicates allowed, today only)
             $existingCustomer = Customer::where('contact_number', $formattedContact)
                 ->where('status', 'waiting')
+                ->whereDate('registered_at', today()) // Only check today's customers
                 ->first();
 
-            Log::info('🔍 Database query result', [
+            Log::info('🔍 Database query result (STRICT - today only)', [
                 'contact_number' => $formattedContact,
                 'found_customer' => $existingCustomer ? $existingCustomer->id : null,
-                'customer_status' => $existingCustomer ? $existingCustomer->status : null
+                'customer_status' => $existingCustomer ? $existingCustomer->status : null,
+                'enforcement' => 'STRICT - No duplicates allowed (today only)',
+                'check_date' => today()->toDateString()
             ]);
 
             if ($existingCustomer) {
@@ -539,6 +687,226 @@ class RegistrationController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to get queue statistics'
+            ], 500);
+        }
+    }
+
+    /**
+     * Update review details from the review screen
+     */
+    public function updateReviewDetails(Request $request)
+    {
+        try {
+            $field = $request->input('field');
+            $value = $request->input('value');
+            
+            // Get customer from session
+            $registrationData = session('registration');
+            if (!$registrationData || !isset($registrationData['customer_id'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Customer session not found'
+                ], 400);
+            }
+            
+            $customerId = $registrationData['customer_id'];
+            
+            $customer = Customer::findOrFail($customerId);
+            $requiresVerification = false;
+            $redirectUrl = null;
+            
+            switch ($field) {
+                case 'name':
+                    $customer->name = $value;
+                    break;
+                    
+                case 'party':
+                    $customer->party_size = (int)$value;
+                    break;
+                    
+                case 'contact':
+                    $customer->contact_number = $value;
+                    break;
+                    
+                case 'priority':
+                    $oldPriority = $customer->priority_type;
+                    $customer->priority_type = $value;
+                    
+                    // If changing to a priority type, require verification (except for pregnant)
+                    if ($value !== 'normal' && $oldPriority === 'normal') {
+                        $customer->has_priority_member = true;
+                        if ($value === 'pregnant') {
+                            // Pregnant customers don't need ID verification
+                            $customer->id_verification_status = 'verified';
+                            $requiresVerification = false;
+                        } else {
+                            // Senior and PWD customers need ID verification
+                            $requiresVerification = true;
+                            $customer->id_verification_status = 'pending';
+                            $redirectUrl = route('kiosk.staffverification', [
+                                'name' => $customer->name,
+                                'priority_type' => $value
+                            ]);
+                        }
+                    } else if ($value === 'normal' && $oldPriority !== 'normal') {
+                        // If changing from priority to normal, update accordingly
+                        $customer->has_priority_member = false;
+                        $customer->id_verification_status = 'skipped_priority';
+                    } else if ($value !== 'normal' && $oldPriority !== 'normal') {
+                        // If changing from one priority type to another
+                        $customer->has_priority_member = true;
+                        if ($value === 'pregnant') {
+                            // Pregnant customers don't need ID verification
+                            $customer->id_verification_status = 'verified';
+                            $requiresVerification = false;
+                        } else {
+                            // Senior and PWD customers need ID verification
+                            $requiresVerification = true;
+                            $customer->id_verification_status = 'pending';
+                            $redirectUrl = route('kiosk.staffverification', [
+                                'name' => $customer->name,
+                                'priority_type' => $value
+                            ]);
+                        }
+                    }
+                    break;
+            }
+            
+            $customer->save();
+            
+            // Update session data
+            $registration = session('registration', []);
+            $registration[$field] = $value;
+            session(['registration' => $registration]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => ucfirst($field) . ' updated successfully',
+                'requires_verification' => $requiresVerification,
+                'redirect_url' => $redirectUrl
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Failed to update review details: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update details. Please try again.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Check verification status for priority customers
+     */
+    public function checkVerificationStatus(Request $request)
+    {
+        try {
+            $registrationData = session('registration');
+            
+            if (!$registrationData) {
+                return response()->json([
+                    'success' => false,
+                    'id_verified' => false,
+                    'id_verification_status' => 'pending'
+                ]);
+            }
+            
+            $customerName = $registrationData['name'];
+            $priorityType = $registrationData['priority_type'] ?? 'normal';
+            
+            // Check if customer exists in database and is verified
+            $customerId = $registrationData['customer_id'] ?? null;
+            if ($customerId) {
+                $customer = \App\Models\Customer::find($customerId);
+                if ($customer && $customer->id_verification_status === 'verified') {
+                    // Update session with database status
+                    $registrationData['id_verified'] = true;
+                    $registrationData['id_verification_status'] = 'verified';
+                    session(['registration' => $registrationData]);
+                    
+                    Log::info('Session updated with database verification status', [
+                        'customer_id' => $customerId,
+                        'verification_status' => 'verified'
+                    ]);
+                }
+            }
+            
+            // Also check PriorityVerification table for session-only customers
+            if ($priorityType !== 'normal' && $priorityType !== 'pregnant') {
+                $verification = \App\Models\PriorityVerification::where('customer_name', $customerName)
+                    ->where('priority_type', $priorityType)
+                    ->where('status', 'verified')
+                    ->latest()
+                    ->first();
+                
+                if ($verification) {
+                    // Update session with verification status
+                    $registrationData['id_verified'] = true;
+                    $registrationData['id_verification_status'] = 'verified';
+                    session(['registration' => $registrationData]);
+                    
+                    Log::info('Session updated with PriorityVerification status', [
+                        'customer_name' => $customerName,
+                        'priority_type' => $priorityType,
+                        'verification_id' => $verification->id,
+                        'verification_status' => 'verified'
+                    ]);
+                }
+            }
+            
+            return response()->json([
+                'success' => true,
+                'id_verified' => $registrationData['id_verified'] ?? false,
+                'id_verification_status' => $registrationData['id_verification_status'] ?? 'pending',
+                'priority_type' => $registrationData['priority_type'] ?? 'normal'
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Failed to check verification status: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'id_verified' => false,
+                'id_verification_status' => 'pending'
+            ], 500);
+        }
+    }
+
+    /**
+     * Update verification status in session
+     */
+    public function updateVerificationSession(Request $request)
+    {
+        try {
+            $registrationData = session('registration');
+            
+            if (!$registrationData) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No registration data found'
+                ], 400);
+            }
+            
+            // Update session with verified status
+            $registrationData['id_verified'] = true;
+            $registrationData['id_verification_status'] = 'verified';
+            
+            session(['registration' => $registrationData]);
+            
+            Log::info('Session updated with verification status', [
+                'priority_type' => $request->priority_type,
+                'verified' => true
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Session updated successfully'
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Failed to update verification session: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update session'
             ], 500);
         }
     }

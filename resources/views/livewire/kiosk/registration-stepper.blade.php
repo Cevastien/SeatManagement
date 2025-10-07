@@ -636,7 +636,7 @@
                 hideLoadingOverlay();
                 
                 if (data.success) {
-                    alert('Thank you! You have been added to the waitlist.\nWe will notify you when your table is ready.');
+            alert('Thank you! You have been added to the waitlist.\nWe will notify you when your table is ready.');
                     window.location.href = `/kiosk/receipt/${data.customer_id}`;
                 } else {
                     alert('Failed to join waitlist. Please try again.');

@@ -1,25 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Review Your Details</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        'inter': ['Inter', 'sans-serif']
-                    }
-                }
-            }
-        }
-    </script>
     <style>
         body {
             overflow: hidden;
@@ -27,355 +16,252 @@
             -webkit-touch-callout: none;
             -webkit-user-select: none;
             user-select: none;
-            font-family: 'Inter', sans-serif;
-            background: #f5f7fa;
         }
     </style>
 </head>
 
-<body class="font-inter h-screen flex flex-col">
+<body class="h-screen flex flex-col bg-gray-100 overflow-hidden" style="font-family: 'Inter', sans-serif;" x-data="reviewApp()">
+    
     <!-- Header -->
-    <div class="flex-shrink-0" style="background-color: #09121E;">
-        <div class="px-8 py-4 flex items-center justify-between">
+    <div class="flex-shrink-0" style="background-color: #111827;">
+        <div class="p-6 flex items-center justify-between">
             <div class="flex items-center space-x-4">
                 <div>
-                    <div class="flex items-center space-x-3 mb-0.5">
-                        <h1 class="text-xl font-semibold text-white">Review Your Details</h1>
-                        <span class="px-2.5 py-0.5 text-white text-xs font-semibold rounded-full"
-                            style="background-color: rgba(255, 255, 255, 0.15);">Step 2 of 4</span>
+                    <div class="flex items-center space-x-3 mb-1">
+                        <h1 class="text-2xl font-bold text-white">Review Your Details</h1>
+                        <span class="px-3 py-1 text-white text-xs font-semibold rounded-full"
+                            style="background-color: #374151;" id="stepIndicator">Step 2 of 3</span>
                     </div>
-                    <p class="text-gray-300 text-xs">Please confirm your information before proceeding</p>
+                    <p class="text-gray-300 text-sm">Please confirm your information before proceeding</p>
                 </div>
             </div>
             <div class="flex items-center space-x-6">
                 <div class="text-right">
-                    <p class="text-white text-xl font-bold" id="time">3:24 PM</p>
-                    <p class="text-gray-300 text-xs" id="date">Sep 16, 2025</p>
+                    <p class="text-white text-2xl font-bold" id="time">3:24 PM</p>
+                    <p class="text-gray-300 text-sm" id="date">Sep 16, 2025</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Main Content - NO SCROLL, Single View -->
-    <div class="flex-1 flex items-center justify-center px-8 py-4 bg-gray-100 overflow-hidden">
-        <div class="w-full max-w-6xl mx-auto grid grid-cols-2 gap-6 h-full items-center">
+    <!-- Main Content -->
+    <div class="flex-1 flex items-center justify-center px-8 py-8 overflow-y-auto">
+        <div class="w-full max-w-6xl">
+            <div class="bg-white rounded-xl shadow-lg p-10">
+                
+                <!-- Title -->
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl font-bold text-gray-900 mb-2">Please Review Your Details</h2>
+                    <p class="text-sm text-gray-600">Confirm your information before generating your queue number</p>
+                </div>
 
-            <!-- LEFT COLUMN: User Details -->
-            <div
-                class="bg-white border-2 border-gray-200 rounded-2xl shadow-lg p-5 h-full flex flex-col justify-center">
-                <div class="flex items-center justify-center mb-4">
-                    <div class="inline-flex items-center justify-center w-12 h-12 rounded-full"
-                        style="background-color: rgba(9, 18, 30, 0.1);">
-                        <i class="fas fa-clipboard-check text-2xl" style="color: #09121E;"></i>
+                <div class="flex gap-10">
+                    <!-- Left Side: Queue Number Display -->
+                    <div class="flex-shrink-0">
+                        <div class="text-center bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-300 rounded-2xl px-12 py-8 shadow-md">
+                            <p class="text-xs text-gray-500 uppercase tracking-widest font-semibold mb-3">Queue Number</p>
+                            <div class="inline-block rounded-2xl px-10 py-6 mb-4 shadow-lg" style="background-color: #111827;">
+                                <p class="text-7xl font-black text-white" x-text="'#' + queueNumber">#{{ $customer->queue_number ?? '001' }}</p>
+                            </div>
+                            <div class="mt-4 pt-4 border-t border-gray-300">
+                                <div class="flex items-center justify-center space-x-2 mb-2">
+                                    <i class="fas fa-users text-gray-600 text-sm"></i>
+                                    <p class="text-sm text-gray-700 font-medium" x-text="partySize + ' guests'">
+                                        {{ $customer->party_size ?? 1 }} guests
+                                    </p>
+                                </div>
+                                <div class="flex items-center justify-center space-x-2">
+                                    <i class="fas fa-clock text-gray-600 text-sm"></i>
+                                    <p class="text-sm text-gray-700 font-medium" x-text="'~' + waitTimeFormatted">
+                                        ~{{ $queueInfo['wait_time_formatted'] ?? '20' }} mins
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="mt-4">
+                                <span class="inline-block px-4 py-2 rounded-full text-xs font-bold shadow-sm" 
+                                      :class="priorityType !== 'normal' ? 'bg-blue-100 text-blue-700 border border-blue-300' : 'bg-gray-200 text-gray-700 border border-gray-300'"
+                                      x-text="priorityStatus">
+                                    {{ $customer->priority_type === 'normal' ? 'Regular' : ucfirst($customer->priority_type) }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Side: Details List -->
+                    <div class="flex-1 space-y-1">
+                        <div class="flex justify-between items-center py-5 px-4 rounded-lg hover:bg-gray-50 transition">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 rounded-lg flex items-center justify-center" style="background-color: #111827;">
+                                    <i class="fas fa-users text-white text-sm"></i>
+                                </div>
+                                <span class="text-gray-700 font-medium">Number of Guests</span>
+                            </div>
+                            <span class="text-gray-900 font-bold text-lg" x-text="partySize + ' Guests'">{{ $customer->party_size ?? 1 }} Guests</span>
+                        </div>
+                        
+                        <div class="flex justify-between items-center py-5 px-4 rounded-lg hover:bg-gray-50 transition">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 rounded-lg flex items-center justify-center" style="background-color: #111827;">
+                                    <i class="fas fa-user text-white text-sm"></i>
+                                </div>
+                                <span class="text-gray-700 font-medium">Full Name</span>
+                            </div>
+                            <span class="text-gray-900 font-bold text-lg" x-text="customerName">{{ $customer->name ?? 'Guest' }}</span>
+                        </div>
+
+                        <div class="flex justify-between items-center py-5 px-4 rounded-lg hover:bg-gray-50 transition">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 rounded-lg flex items-center justify-center" style="background-color: #111827;">
+                                    <i class="fas fa-phone text-white text-sm"></i>
+                                </div>
+                                <span class="text-gray-700 font-medium">Contact Number</span>
+                            </div>
+                            <span class="text-gray-900 font-bold text-lg" x-text="contactNumber || 'Not provided'">{{ $customer->contact_number ?? 'Not provided' }}</span>
+                        </div>
+
+                        <div class="flex justify-between items-center py-5 px-4 rounded-lg hover:bg-gray-50 transition">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 rounded-lg flex items-center justify-center" style="background-color: #111827;">
+                                    <i class="fas fa-star text-white text-sm"></i>
+                                </div>
+                                <span class="text-gray-700 font-medium">Priority Status</span>
+                            </div>
+                            <span class="text-gray-900 font-bold text-lg" x-text="priorityStatus">{{ $customer->priority_type === 'normal' ? 'Regular' : ucfirst($customer->priority_type) }}</span>
+                        </div>
                     </div>
                 </div>
 
-                <h2 class="text-xl font-bold text-gray-800 text-center mb-1">Your Information</h2>
-                <p class="text-sm text-gray-600 text-center mb-5">Review and edit if needed</p>
-
-                <div class="space-y-4">
-                    <!-- Name -->
-                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                        <div class="flex items-center space-x-3">
-                            <div class="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-                                style="background-color: #09121E;">
-                                <i class="fas fa-user text-white text-xs"></i>
-                            </div>
-                            <div>
-                                <p class="text-xs text-gray-500 font-medium">Name/Nickname</p>
-                                <p class="text-base font-bold text-gray-800" id="reviewName">{{ $customer->name ?? 'Guest' }}</p>
-                            </div>
-                        </div>
-                        <button onclick="editField('name')" class="hover:opacity-80 transition p-2"
-                            style="color: #09121E;">
-                            <i class="fas fa-edit text-base"></i>
-                        </button>
-                    </div>
-
-                    <!-- Party Size -->
-                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                        <div class="flex items-center space-x-3">
-                            <div class="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-                                style="background-color: #09121E;">
-                                <i class="fas fa-users text-white text-xs"></i>
-                            </div>
-                            <div>
-                                <p class="text-xs text-gray-500 font-medium">Party Size</p>
-                                <p class="text-base font-bold text-gray-800" id="reviewPartySize">{{ $customer->party_size ?? '1' }} {{ ($customer->party_size ?? 1) == 1 ? 'Guest' : 'Guests' }}</p>
-                            </div>
-                        </div>
-                        <button onclick="editField('party')" class="hover:opacity-80 transition p-2"
-                            style="color: #09121E;">
-                            <i class="fas fa-edit text-base"></i>
-                        </button>
-                    </div>
-
-                    <!-- Contact Number -->
-                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                        <div class="flex items-center space-x-3">
-                            <div class="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-                                style="background-color: #09121E;">
-                                <i class="fas fa-phone text-white text-xs"></i>
-                            </div>
-                            <div>
-                                <p class="text-xs text-gray-500 font-medium">Contact Number</p>
-                                <p class="text-base font-bold text-gray-800" id="reviewContact">{{ $customer->contact_number ?? 'Not provided' }}</p>
-                            </div>
-                        </div>
-                        <button onclick="editField('contact')" class="hover:opacity-80 transition p-2"
-                            style="color: #09121E;">
-                            <i class="fas fa-edit text-base"></i>
-                        </button>
-                    </div>
-
-                    <!-- Priority Status -->
-                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                        <div class="flex items-center space-x-3">
-                            <div class="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-                                style="background-color: #09121E;">
-                                <i class="fas fa-star text-white text-xs"></i>
-                            </div>
-                            <div>
-                                <p class="text-xs text-gray-500 font-medium">Priority Status</p>
-                                @if($customer->id_verification_status === 'skipped_priority')
-                                    <div class="flex items-center space-x-2">
-                                        <p class="text-base font-bold text-gray-800">Regular Guest</p>
-                                        <span class="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-semibold rounded-full">Priority Skipped</span>
-                                    </div>
-                                @elseif($customer->has_priority_member ?? false)
-                                    <div class="flex items-center space-x-2">
-                                        <p class="text-base font-bold text-gray-800">{{ ucfirst($customer->priority_type ?? 'Priority') }} Guest</p>
-                                        <span class="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-semibold rounded-full">
-                                            @if($customer->id_verification_status === 'verified')
-                                                ✓ Verified
-                                            @else
-                                                Priority
-                                            @endif
-                                        </span>
-                                    </div>
-                                @else
-                                    <div class="flex items-center space-x-2">
-                                        <p class="text-base font-bold text-gray-800">Regular Guest</p>
-                                        <span class="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">Standard</span>
-                                    </div>
-                                @endif
-                            </div>
-                        </div>
-                        <button onclick="editField('priority')" class="hover:opacity-80 transition p-2"
-                            style="color: #09121E;">
-                            <i class="fas fa-edit text-base"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- RIGHT COLUMN: Queue Information -->
-            <div class="bg-white border-2 border-gray-200 rounded-2xl shadow-lg p-6 h-full flex flex-col justify-center"
-                x-data="queueUpdater({{ $customer->id }})">
-                <div class="text-center">
-                    <!-- Queue Number - Large & Prominent -->
-                    <div class="mb-6">
-                        <p class="text-sm font-medium mb-2" style="color: #09121E;">Your Queue Number</p>
-                        <p class="text-7xl font-bold mb-2" style="color: #09121E;">#{{ $customer->queue_number }}</p>
-                    </div>
-
-                    <!-- Divider -->
-                    <div class="border-t-2 border-gray-200 my-6"></div>
-
-                    <!-- Customers Ahead & Wait Time - Side by Side -->
-                    <div class="grid grid-cols-2 gap-6">
-                        <!-- Customers Ahead -->
-                        <div class="customers-ahead-section">
-                            <div class="flex flex-col items-center">
-                                <i class="fas fa-users text-3xl mb-2" style="color: #09121E;"></i>
-                                <p class="text-xs text-gray-600 mb-1">Customers Ahead</p>
-                                <p class="text-4xl font-bold mb-2" style="color: #09121E;" x-text="customersAhead">
-                                    {{ $queueInfo['customers_ahead'] ?? 0 }}
-                                </p>
-                                <p class="text-xs text-gray-500" x-show="customersAhead > 0">
-                                    <span x-text="customersAhead"></span>
-                                    <span x-text="customersAhead === 1 ? 'person' : 'people'"></span> waiting
-                                </p>
-                                <p class="text-xs text-green-600 font-semibold" x-show="customersAhead === 0">
-                                    You're next!
-                                </p>
-                            </div>
-                        </div>
-
-                        <!-- Wait Time -->
-                        <div class="wait-time-section">
-                            <div class="flex flex-col items-center">
-                                <i class="fas fa-clock text-3xl mb-2" style="color: #09121E;"></i>
-                                <p class="text-xs text-gray-600 mb-1">Estimated Wait</p>
-                                <p class="text-4xl font-bold mb-2" style="color: #09121E;" x-text="waitTimeFormatted">
-                                    {{ $formattedWait }}
-                                </p>
-                                <p class="text-xs text-gray-500">minutes</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Divider -->
-                    <div class="border-t-2 border-gray-200 my-6"></div>
-
-                    <!-- Last Updated -->
-                    <div class="text-center">
-                        <p class="text-xs text-gray-400">
-                            <i class="fas fa-sync-alt mr-1"></i>
-                            Last updated: <span x-text="lastUpdated">{{ now()->format('g:i A') }}</span>
-                        </p>
-                        <p class="text-xs text-gray-500 mt-1">Updates automatically</p>
-                    </div>
-                </div>
             </div>
         </div>
     </div>
 
     <!-- Bottom Navigation Bar -->
-    <div class="bg-white px-8 py-4 flex-shrink-0 shadow-lg">
+    <div class="bg-white border-t-2 border-gray-200 px-8 py-4 flex-shrink-0">
         <div class="flex items-center justify-between max-w-6xl mx-auto">
             <!-- Back Button -->
-            <button onclick="goBack()"
-                class="px-12 py-4 bg-white hover:bg-gray-50 border-2 border-gray-300 text-gray-800 font-semibold text-lg rounded-xl transition-all duration-200 flex items-center space-x-2 shadow-md hover:shadow-lg">
-                <i class="fas fa-arrow-left text-lg"></i>
-                <span>Go Back</span>
+            <button onclick="editDetails()"
+                class="px-16 py-5 bg-white hover:bg-gray-50 border-2 border-gray-300 text-gray-800 font-bold text-xl rounded-xl transition flex items-center space-x-3">
+                <i class="fas fa-edit text-2xl"></i>
+                <span>Edit Details</span>
             </button>
 
             <!-- Continue Button -->
-            <button type="button" onclick="confirmAndPrint()"
-                class="px-12 py-4 text-white font-semibold text-lg rounded-xl shadow-xl transition-all duration-200 flex items-center space-x-2 hover:shadow-2xl hover:scale-105"
-                style="background-color: #09121E;">
-                <span>Confirm & Print Receipt</span>
-                <i class="fas fa-check text-lg"></i>
+            <button type="button" @click="confirmAndPrint()" style="background-color: #111827;"
+                class="px-16 py-5 hover:bg-gray-800 text-white font-bold text-xl rounded-xl shadow-lg transition flex items-center space-x-3">
+                <span>Continue</span>
+                <i class="fas fa-arrow-right text-2xl"></i>
             </button>
         </div>
     </div>
 
+
+
+
+
     <script>
-        // Update date and time
-        function updateDateTime() {
-            const now = new Date();
-
-            const timeOptions = {
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: true
-            };
-            const timeFormatted = now.toLocaleString('en-US', timeOptions);
-            document.getElementById('time').textContent = timeFormatted;
-
-            const dateOptions = {
-                month: 'short',
-                day: '2-digit',
-                year: 'numeric'
-            };
-            const dateFormatted = now.toLocaleString('en-US', dateOptions);
-            document.getElementById('date').textContent = dateFormatted;
-        }
-
-        updateDateTime();
-        setInterval(updateDateTime, 1000);
-
-        // Alpine.js for dynamic queue updates
-        function queueUpdater(customerId) {
+        const customerData = @json($customer ?? []);
+        const queueData = @json($queueInfo ?? []);
+        
+        function reviewApp() {
             return {
-                customersAhead: {{ $queueInfo['customers_ahead'] ?? 0 }},
-                totalWaiting: {{ $queueInfo['total_waiting'] ?? 0 }},
-                position: {{ $queueInfo['position'] ?? 1 }},
-                waitTimeFormatted: '{{ $formattedWait }}',
-                lastUpdated: '{{ now()->format('g:i A') }}',
+                customerName: customerData.name || 'Guest',
+                partySize: customerData.party_size || 1,
+                contactNumber: customerData.contact_number || '',
+                priorityType: customerData.priority_type || 'normal',
+                priorityStatus: customerData.priority_type === 'normal' ? 'Regular' : (customerData.priority_type?.charAt(0).toUpperCase() + customerData.priority_type?.slice(1) || 'Regular'),
+                queueNumber: customerData.queue_number || '001',
+                customersAhead: queueData.customers_ahead || 0,
+                waitTimeFormatted: queueData.wait_time_formatted || '20',
+                
+                async confirmAndPrint() {
+                    try {
+                        if (this.priorityType !== 'normal' && this.priorityType !== 'regular' && this.priorityType !== 'pregnant') {
+                            const checkResponse = await fetch('{{ route("kiosk.check-verification-status") }}', {
+                                method: 'GET',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                }
+                            });
+                            const checkData = await checkResponse.json();
+                            if (!checkData.id_verified || checkData.id_verification_status !== 'verified') {
+                                window.location.href = '{{ route("kiosk.staffverification") }}?name=' + encodeURIComponent(this.customerName) + '&priority_type=' + this.priorityType;
+                                return;
+                            }
+                        }
+                        const response = await fetch('{{ route("kiosk.registration.confirm") }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                'X-Requested-With': 'XMLHttpRequest',
+                            },
+                            body: JSON.stringify({ confirm: true })
+                        });
+                        const data = await response.json();
+                        if (data.success && data.redirect_to) {
+                            window.location.href = data.redirect_to;
+                        } else {
+                            alert('Error: ' + (data.message || 'Please try again'));
+                        }
+                    } catch (error) {
+                        alert('An error occurred. Please try again.');
+                    }
+                },
                 
                 init() {
-                    // Update every 10 seconds for real-time feel
                     this.updateQueue();
                     setInterval(() => this.updateQueue(), 10000);
                 },
                 
                 async updateQueue() {
                     try {
-                        const response = await fetch(`/api/customer/${customerId}/current-wait`);
-                        const data = await response.json();
-                        
-                        if (data.status === 'waiting') {
-                            this.customersAhead = data.customers_ahead;
-                            this.totalWaiting = data.total_waiting;
-                            this.position = data.position;
-                            this.waitTimeFormatted = data.formatted;
-                        } else {
-                            // Customer was called/seated
-                            this.waitTimeFormatted = data.message;
-                            this.customersAhead = 0;
-                        }
-                        
-                        this.lastUpdated = new Date().toLocaleTimeString('en-US', {
-                            hour: 'numeric',
-                            minute: '2-digit'
+                        const response = await fetch('{{ route("api.queue.update") }}', {
+                            method: 'GET',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                            }
                         });
-                        
+                        const data = await response.json();
+                        if (data.success) {
+                            this.customersAhead = data.customers_ahead || 0;
+                            this.waitTimeFormatted = data.wait_time_formatted || '20';
+                        }
                     } catch (error) {
-                        console.error('Error updating queue:', error);
+                        console.error('Error:', error);
                     }
                 }
             }
         }
 
-        // Clean up interval when page unloads
-        window.addEventListener('beforeunload', function() {
-            // Alpine.js handles cleanup automatically
-        });
-
-        function goBack() {
-            // Go back to registration with edit mode to preserve existing data
-            window.location.href = "{{ route('kiosk.registration') }}?edit=all";
+        function updateDateTime() {
+            const now = new Date();
+            document.getElementById('time').textContent = now.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            document.getElementById('date').textContent = now.toLocaleString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
         }
 
-        function closeScreen() {
-            if (confirm('Are you sure you want to cancel your registration?')) {
-                window.location.href = "{{ route('kiosk.attract') }}";
-            }
+        updateDateTime();
+        setInterval(updateDateTime, 1000);
+
+        function editDetails() {
+            window.location.href = "{{ route('kiosk.registration') }}?edit=1";
         }
 
-        function editField(field) {
-            // Redirect back to registration with edit parameter to preserve all existing data
-            window.location.href = "{{ route('kiosk.registration') }}?edit=" + field;
-        }
-
-        function confirmAndPrint() {
-            // Show loading state
-            const confirmBtn = document.querySelector('button[onclick="confirmAndPrint()"]');
-            confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
-            confirmBtn.disabled = true;
-
-            // Submit the final registration
-            fetch('{{ route("kiosk.registration.confirm") }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-                body: JSON.stringify({
-                    confirm: true
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Redirect to receipt/printing page with customer data
-                    window.location.href = data.redirect_url;
+        // Update step indicators based on customer type
+        document.addEventListener('DOMContentLoaded', function() {
+            const stepIndicator = document.getElementById('stepIndicator');
+            if (stepIndicator) {
+                const isPriority = customerData.priority_type && customerData.priority_type !== 'normal';
+                if (isPriority) {
+                    stepIndicator.textContent = 'Step 3 of 4';
                 } else {
-                    alert('Error confirming registration: ' + (data.message || 'Please try again'));
-                    confirmBtn.innerHTML = '<span>Confirm & Print Receipt</span><i class="fas fa-check ml-4"></i>';
-                    confirmBtn.disabled = false;
+                    stepIndicator.textContent = 'Step 2 of 3';
                 }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('An error occurred. Please try again.');
-                confirmBtn.innerHTML = '<span>Confirm & Print Receipt</span><i class="fas fa-check ml-4"></i>';
-                confirmBtn.disabled = false;
-            });
-        }
+            }
+        });
     </script>
 
     <!-- Session Timeout Modal Manager -->

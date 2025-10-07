@@ -30,8 +30,12 @@ Route::post('/kiosk/guest-info', [\App\Http\Controllers\KioskController::class, 
 Route::get('/kiosk/registration', [\App\Http\Controllers\RegistrationController::class, 'show'])->name('kiosk.registration');
 Route::post('/kiosk/registration', [\App\Http\Controllers\RegistrationController::class, 'store'])->name('kiosk.registration.store');
 Route::get('/kiosk/review-details', [\App\Http\Controllers\RegistrationController::class, 'reviewDetails'])->name('kiosk.review-details');
+Route::post('/kiosk/review-details/update', [\App\Http\Controllers\RegistrationController::class, 'updateReviewDetails'])->name('kiosk.review-details.update');
 Route::post('/kiosk/id-verify', [\App\Http\Controllers\RegistrationController::class, 'verifyId'])->name('kiosk.id-verify');
 Route::post('/kiosk/registration/confirm', [\App\Http\Controllers\RegistrationController::class, 'confirm'])->name('kiosk.registration.confirm');
+Route::post('/kiosk/registration/cancel', [\App\Http\Controllers\RegistrationController::class, 'cancel'])->name('kiosk.registration.cancel');
+Route::get('/kiosk/check-verification-status', [\App\Http\Controllers\RegistrationController::class, 'checkVerificationStatus'])->name('kiosk.check-verification-status');
+Route::post('/kiosk/update-verification-session', [\App\Http\Controllers\RegistrationController::class, 'updateVerificationSession'])->name('kiosk.update-verification-session');
 Route::get('/kiosk/receipt/{customerId}', function ($customerId) {
     $customer = \App\Models\Customer::findOrFail($customerId);
     return view('kiosk.receipt', [
@@ -39,11 +43,13 @@ Route::get('/kiosk/receipt/{customerId}', function ($customerId) {
     ]);
 })->name('kiosk.receipt');
 
-Route::get('/kiosk/id-scanner', function () {
+Route::get('/kiosk/staffverification', function () {
     return view('kiosk.staffverification');
-})->name('kiosk.id-scanner');
+})->name('kiosk.staffverification');
 
-Route::get('/kiosk/webcam-config', [App\Http\Controllers\Kiosk\IDScannerController::class, 'getWebcamConfig']);
+Route::get('/kiosk/webcam-config', function () {
+    return response()->json(['webcam_available' => false]);
+});
 Route::get('/kiosk/demo-qr', function () {
     return view('kiosk.demo-qr-generator');
 })->name('kiosk.demo-qr');
@@ -78,6 +84,7 @@ Route::get('/api/queue/summary', [\App\Http\Controllers\ApiController::class, 'g
 // Real-time queue endpoints using customer ID
 Route::get('/api/customer/{customerId}/current-wait', [\App\Http\Controllers\ApiController::class, 'getCurrentWait'])->name('api.customer.current-wait');
 Route::get('/api/current-wait-time', [\App\Http\Controllers\ApiController::class, 'getCurrentWaitTime'])->name('api.current-wait-time');
+Route::get('/api/queue/update', [\App\Http\Controllers\ApiController::class, 'getQueueUpdate'])->name('api.queue.update');
 
 Route::get('/kiosk/debug-test', function () {
     return view('kiosk.debug-test');
@@ -85,12 +92,29 @@ Route::get('/kiosk/debug-test', function () {
 
 Route::post('/kiosk/check-duplicate-contact', [\App\Http\Controllers\RegistrationController::class, 'checkDuplicateContact'])->name('kiosk.check-duplicate-contact');
 // ID Scanner and DroidCam routes
-Route::get('/kiosk/droidcam/status', [\App\Http\Controllers\Kiosk\IDScannerController::class, 'checkStatus'])->name('kiosk.droidcam.status');
-Route::post('/kiosk/droidcam/capture-image', [\App\Http\Controllers\Kiosk\IDScannerController::class, 'captureImage'])->name('kiosk.droidcam.capture-image')->withoutMiddleware('web');
-Route::post('/kiosk/droidcam/capture-and-ocr', [\App\Http\Controllers\Kiosk\IDScannerController::class, 'captureAndOCR'])->name('kiosk.droidcam.capture-and-ocr')->withoutMiddleware('web');
-Route::post('/kiosk/verify-id-name', [\App\Http\Controllers\Kiosk\IDScannerController::class, 'verifyIDName'])->name('kiosk.verify-id-name')->withoutMiddleware('web');
-Route::post('/kiosk/request-staff-assistance', [\App\Http\Controllers\Kiosk\IDScannerController::class, 'requestStaffAssistance'])->name('kiosk.request-staff-assistance')->withoutMiddleware('web');
-Route::get('/kiosk/id-mismatch', [\App\Http\Controllers\Kiosk\IDScannerController::class, 'showMismatchScreen'])->name('kiosk.id-mismatch');
+Route::get('/kiosk/droidcam/status', function () {
+    return response()->json(['status' => 'unavailable']);
+})->name('kiosk.droidcam.status');
+
+Route::post('/kiosk/droidcam/capture-image', function () {
+    return response()->json(['success' => false, 'message' => 'Feature not available']);
+})->name('kiosk.droidcam.capture-image');
+
+Route::post('/kiosk/droidcam/capture-and-ocr', function () {
+    return response()->json(['success' => false, 'message' => 'Feature not available']);
+})->name('kiosk.droidcam.capture-and-ocr');
+
+Route::post('/kiosk/verify-id-name', function () {
+    return response()->json(['success' => false, 'message' => 'Feature not available']);
+})->name('kiosk.verify-id-name');
+
+Route::post('/kiosk/request-staff-assistance', function () {
+    return response()->json(['success' => false, 'message' => 'Feature not available']);
+})->name('kiosk.request-staff-assistance');
+
+Route::get('/kiosk/id-mismatch', function () {
+    return view('kiosk.id-mismatch');
+})->name('kiosk.id-mismatch');
 Route::get('/kiosk/ocr-test', function () {
     return view('kiosk.ocr-test');
 })->name('kiosk.ocr-test');

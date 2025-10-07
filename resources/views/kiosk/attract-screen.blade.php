@@ -218,7 +218,7 @@
             <!-- CTA Button -->
             <div class="animate-scale-in delay-500">
                 <button onclick="showTermsModal()" 
-                        class="group bg-cream-button hover:bg-white text-primary font-bold py-8 px-20 rounded-2xl transition-all duration-300 flex items-center justify-center gap-4 text-3xl shadow-2xl hover:shadow-3xl transform hover:scale-105 mx-auto animate-float cursor-pointer pointer-events-auto">
+                        class="group bg-cream-button hover:bg-white text-primary font-bold py-5 px-16 rounded-xl transition-all duration-300 flex items-center justify-center gap-4 text-2xl shadow-2xl hover:shadow-3xl transform hover:scale-105 mx-auto animate-float cursor-pointer pointer-events-auto">
                     <i class="fa-solid fa-chair text-3xl group-hover:rotate-12 transition-transform duration-300"></i>
                     <span>Tap to Get a Seat</span>
                     <i class="fa-solid fa-arrow-right text-2xl group-hover:translate-x-2 transition-transform duration-300"></i>
@@ -256,55 +256,53 @@
     </div>
 
     <!-- Terms & Conditions Modal -->
-    <div id="termsModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-8">
+    <div id="termsModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
         <!-- Modal Overlay -->
-        <div onclick="closeTermsModal()" class="modal-overlay absolute inset-0 bg-black/70 backdrop-blur-md"></div>
-        
+        <div class="modal-overlay absolute inset-0 bg-black/70 backdrop-blur-md"></div>
+
         <!-- Modal Container -->
-        <div class="modal-content relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full mx-4 p-8 max-h-[90vh] overflow-hidden flex flex-col">
+        <div
+            class="modal-content relative bg-white rounded-3xl shadow-2xl max-w-3xl w-full mx-4 max-h-[85vh] flex flex-col overflow-hidden">
             <!-- Modal Header -->
-            <div class="bg-primary px-8 py-6 flex items-center justify-between">
-                <h2 class="text-white text-3xl font-bold">Terms & Conditions & Data Privacy Consent</h2>
-                <button onclick="closeTermsModal()" class="text-white hover:text-cream-button transition-colors ml-4">
-                    <i class="fas fa-times text-3xl"></i>
-                </button>
+            <div class="bg-primary px-8 py-5">
+                <h2 class="text-white text-2xl font-bold text-center">Terms & Conditions & Data Privacy Consent</h2>
             </div>
 
             <!-- Modal Body -->
-            <div class="flex-1 overflow-y-auto px-10 py-8 space-y-8">
+            <div class="flex-1 overflow-y-auto px-8 py-6 space-y-6">
                 <!-- Introduction -->
-                <div class="text-center pb-2">
-                    <p class="text-gray-700 text-lg">
-                        By proceeding, you agree to our <span class="text-red-600 font-semibold">Terms & Conditions</span> and Data Privacy Policy.
+                <div class="text-center">
+                    <p class="text-gray-700 text-base">
+                        By proceeding, you agree to our <span class="text-red-600 font-semibold">Terms &
+                            Conditions</span> and Data Privacy Policy.
                     </p>
                 </div>
 
                 <!-- Use of Information Section -->
-                <div class="space-y-4">
-                    <h3 class="text-gray-900 text-2xl font-bold">Use of Information</h3>
-                    <p class="text-gray-600 text-lg leading-relaxed">
-                        We collect your name, contact number, and group details solely for seat assignment and queue management. This information is processed securely and used exclusively for providing our services to you.
+                <div class="space-y-3">
+                    <h3 class="text-gray-900 text-xl font-bold">Use of Information</h3>
+                    <p class="text-gray-600 text-base leading-relaxed">
+                        We collect your name, contact number, and group details solely for seat assignment and queue
+                        management. This information is processed securely and used exclusively for providing our
+                        services to you.
                     </p>
                 </div>
 
                 <!-- Priority Guests Section -->
-                <div class="space-y-4">
-                    <h3 class="text-gray-900 text-2xl font-bold">Priority Guests</h3>
-                    <p class="text-gray-600 text-lg leading-relaxed">
-                        If your group includes a Senior Citizen, PWD, or Pregnant Guest, verification may be required for fairness. We ensure equal treatment and prioritize accessibility for all our guests.
+                <div class="space-y-3">
+                    <h3 class="text-gray-900 text-xl font-bold">Priority Guests</h3>
+                    <p class="text-gray-600 text-base leading-relaxed">
+                        If your group includes a Senior Citizen, PWD, or Pregnant Guest, verification may be required
+                        for fairness. We ensure equal treatment and prioritize accessibility for all our guests.
                     </p>
                 </div>
 
                 <!-- Consent Checkbox -->
-                <div class="pt-6 pb-4">
-                    <label class="flex items-start space-x-5 cursor-pointer group">
-                        <input 
-                            type="checkbox" 
-                            id="consentCheckbox" 
-                            onchange="toggleAcceptButton()"
-                            class="mt-1.5 w-7 h-7 rounded border-2 border-gray-400 text-primary focus:ring-2 focus:ring-primary cursor-pointer"
-                        >
-                        <span class="text-gray-800 text-lg font-medium group-hover:text-gray-900 select-none">
+                <div class="pt-4">
+                    <label class="flex items-start space-x-3 cursor-pointer group">
+                        <input type="checkbox" id="consentCheckbox" onchange="toggleAcceptButton()"
+                            class="mt-1 w-5 h-5 rounded border-2 border-gray-400 text-primary focus:ring-2 focus:ring-primary cursor-pointer">
+                        <span class="text-gray-800 text-base font-medium group-hover:text-gray-900 select-none">
                             I agree to the Terms & Conditions and Data Privacy Consent
                         </span>
                     </label>
@@ -312,22 +310,16 @@
             </div>
 
             <!-- Modal Footer -->
-            <div class="px-10 py-8 border-t-2 border-gray-200 flex items-center justify-center space-x-6">
+            <div class="px-8 py-6 border-t border-gray-200 flex items-center justify-center space-x-4">
                 <!-- Decline Button -->
-                <button 
-                    onclick="declineTerms()"
-                    class="px-16 py-5 bg-white hover:bg-gray-50 border-2 border-gray-300 text-gray-800 font-bold text-xl rounded-xl transition-all duration-200 hover:shadow-lg"
-                >
+                <button onclick="declineTerms()"
+                    class="flex-1 max-w-xs px-8 py-4 bg-white hover:bg-gray-50 border-2 border-gray-300 text-gray-800 font-semibold text-lg rounded-2xl transition-all duration-200 hover:shadow-md">
                     Decline
                 </button>
 
                 <!-- Accept Button -->
-                <button 
-                    id="acceptBtn"
-                    onclick="acceptTerms()"
-                    disabled
-                    class="px-16 py-5 bg-primary text-white font-bold text-xl rounded-xl transition-all duration-200 opacity-50 cursor-not-allowed"
-                >
+                <button id="acceptBtn" onclick="acceptTerms()" disabled
+                    class="flex-1 max-w-xs px-8 py-4 bg-primary text-white font-semibold text-lg rounded-2xl transition-all duration-200 opacity-50 cursor-not-allowed">
                     Accept & Continue
                 </button>
             </div>
@@ -365,15 +357,15 @@
         function toggleAcceptButton() {
             const checkbox = document.getElementById('consentCheckbox');
             const acceptBtn = document.getElementById('acceptBtn');
-            
+
             if (checkbox.checked) {
                 acceptBtn.disabled = false;
                 acceptBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                acceptBtn.classList.add('hover:bg-primary-dark', 'shadow-lg', 'hover:scale-105');
+                acceptBtn.classList.add('hover:bg-primary-dark', 'hover:shadow-md', 'cursor-pointer');
             } else {
                 acceptBtn.disabled = true;
                 acceptBtn.classList.add('opacity-50', 'cursor-not-allowed');
-                acceptBtn.classList.remove('hover:bg-primary-dark', 'shadow-lg', 'hover:scale-105');
+                acceptBtn.classList.remove('hover:bg-primary-dark', 'hover:shadow-md', 'cursor-pointer');
             }
         }
 

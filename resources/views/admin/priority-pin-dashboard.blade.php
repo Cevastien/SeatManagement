@@ -98,6 +98,9 @@
                 <button onclick="closePINModal()" class="flex-1 px-4 py-3 bg-white hover:bg-gray-50 border-2 border-gray-300 text-gray-800 font-semibold rounded-lg transition">
                     <i class="fas fa-times mr-2"></i> Cancel
                 </button>
+                <button onclick="rejectVerification()" class="px-4 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition">
+                    <i class="fas fa-times mr-2"></i> Reject
+                </button>
                 <button onclick="confirmPIN()" class="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition">
                     <i class="fas fa-check mr-2"></i> Confirm & Generate PIN
                 </button>
@@ -236,6 +239,45 @@
             } catch (error) {
                 console.error('Error confirming PIN:', error);
                 alert('Failed to confirm verification. Please try again.');
+            }
+        }
+
+        // Reject verification
+        async function rejectVerification() {
+            if (!currentVerificationId) {
+                alert('No verification selected');
+                return;
+            }
+
+            if (!confirm(`Reject verification for ${currentCustomerData.name}?\n\nThis will mark the verification as failed and the customer will be notified.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/staff/reject-verification', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        verification_id: currentVerificationId,
+                        rejected_by: 'Staff Member',
+                        reason: 'ID verification failed'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert(`Verification rejected for ${currentCustomerData.name}. Customer will be notified of the failure.`);
+                    closePINModal();
+                    loadRecentPINs();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error rejecting verification:', error);
+                alert('Failed to reject verification. Please try again.');
             }
         }
 

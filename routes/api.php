@@ -24,6 +24,13 @@ Route::prefix('customer')->group(function () {
 Route::prefix('staff')->group(function () {
     Route::get('/pending-verifications', [VerificationController::class, 'getPendingVerifications']);
     Route::post('/verify-and-generate-pin', [VerificationController::class, 'verifyAndGeneratePIN']);
+    Route::post('/reject-verification', [VerificationController::class, 'rejectVerification']);
+});
+
+// Queue management routes
+Route::prefix('queue')->group(function () {
+    Route::get('/update', [\App\Http\Controllers\ApiController::class, 'updateQueueInfo']);
+    Route::get('/status/{customerId}', [\App\Http\Controllers\ApiController::class, 'getCustomerQueueStatus']);
 });
 
 // Debug route

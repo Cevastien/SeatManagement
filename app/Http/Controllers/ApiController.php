@@ -324,4 +324,220 @@ class ApiController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Get queue update information for review details screen
+     */
+    public function getQueueUpdate(Request $request)
+    {
+        try {
+            // Get customer from session
+            $registrationData = session('registration');
+            if (!$registrationData) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No registration data found in session'
+                ], 400);
+            }
+            
+            // Check if customer is already confirmed (has customer_id in session)
+            if (isset($registrationData['customer_id']) && $registrationData['customer_id']) {
+                $customerId = $registrationData['customer_id'];
+                $customer = Customer::find($customerId);
+                
+                if (!$customer) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Customer not found in database'
+                    ], 400);
+                }
+                
+                // Use SmartQueueEstimator to get accurate queue information
+                $estimator = new \App\Services\SmartQueueEstimator();
+                $queueInfo = $estimator->calculateWaitTime($customer);
+                
+                return response()->json([
+                    'success' => true,
+                    'customers_ahead' => $queueInfo['customers_ahead'],
+                    'wait_time_formatted' => $queueInfo['wait_formatted'],
+                    'wait_minutes' => $queueInfo['wait_minutes'],
+                    'last_updated' => $queueInfo['last_updated'],
+                    'queue_number' => $customer->queue_number,
+                    'status' => $customer->status,
+                    'estimated_table_time' => $queueInfo['estimated_table_time']
+                ]);
+            }
+            
+            // For pending customers (session-only, not yet in database)
+            // Use SmartQueueEstimator to get real-time queue information
+            $queueNumber = $registrationData['temp_queue_number'] ?? '001';
+            $partySize = $registrationData['party_size'] ?? 1;
+            $priorityType = $registrationData['priority_type'] ?? 'normal';
+            
+            // Create temporary customer for calculation
+            $tempCustomer = new Customer([
+                'party_size' => $partySize,
+                'priority_type' => $priorityType,
+                'status' => 'waiting',
+                'created_at' => now(),
+            ]);
+            
+            // Use SmartQueueEstimator to get real-time queue information
+            $estimator = new \App\Services\SmartQueueEstimator();
+            $queueInfo = $estimator->calculateWaitTime($tempCustomer);
+            
+            return response()->json([
+                'success' => true,
+                'customers_ahead' => $queueInfo['customers_ahead'],
+                'wait_time_formatted' => $queueInfo['wait_formatted'],
+                'wait_minutes' => $queueInfo['wait_minutes'],
+                'last_updated' => $queueInfo['last_updated'],
+                'queue_number' => $queueNumber,
+                'status' => 'pending',
+                'estimated_table_time' => $queueInfo['estimated_table_time']
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to get queue update: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
+     * Update queue information for real-time display
+     */
+    public function updateQueueInfo()
+    {
+        try {
+            // Get current queue statistics
+            $waitingCustomers = \App\Models\Customer::where('status', 'waiting')->count();
+            $seatedCustomers = \App\Models\Customer::where('status', 'seated')->count();
+            $completedToday = \App\Models\Customer::where('status', 'completed')
+                ->whereDate('completed_at', today())
+                ->count();
+            
+            // Calculate average wait time for new customers
+            $estimator = new \App\Services\SmartQueueEstimator();
+            $testCustomer = new \App\Models\Customer([
+                'party_size' => 2,
+                'priority_type' => 'normal',
+                'status' => 'waiting',
+                'created_at' => now(),
+            ]);
+            
+            $waitTimeResult = $estimator->calculateWaitTime($testCustomer);
+            
+            // Get table turnover information
+            $recentlyCompleted = \App\Models\Customer::where('status', 'completed')
+                ->where('completed_at', '>=', now()->subMinutes(30))
+                ->count();
+            
+            $recentlySeated = \App\Models\Customer::where('status', 'seated')
+                ->where('seated_at', '>=', now()->subMinutes(30))
+                ->count();
+            
+            return response()->json([
+                'success' => true,
+                'customers_ahead' => $waitTimeResult['customers_ahead'],
+                'wait_time_formatted' => $waitTimeResult['wait_formatted'],
+                'wait_time_minutes' => $waitTimeResult['wait_minutes'],
+                'total_waiting' => $waitingCustomers,
+                'total_seated' => $seatedCustomers,
+                'completed_today' => $completedToday,
+                'recent_activity' => [
+                    'seated_last_30min' => $recentlySeated,
+                    'completed_last_30min' => $recentlyCompleted,
+                ],
+                'last_updated' => now()->format('g:i A'),
+                'estimated_table_time' => $waitTimeResult['estimated_table_time'] ?? null,
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Queue update error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Unable to update queue information',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
+     * Get specific customer's queue status
+     */
+    public function getCustomerQueueStatus($customerId)
+    {
+        try {
+            $customer = \App\Models\Customer::find($customerId);
+            
+            if (!$customer) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Customer not found'
+                ], 404);
+            }
+            
+            if ($customer->status !== 'waiting') {
+                return response()->json([
+                    'success' => true,
+                    'status' => $customer->status,
+                    'message' => 'Customer is no longer waiting',
+                    'queue_number' => $customer->queue_number,
+                    'formatted_queue_number' => $customer->formatted_queue_number,
+                ]);
+            }
+            
+            // Calculate current position and wait time
+            $estimator = new \App\Services\QueueEstimator();
+            $position = $estimator->getQueuePosition($customerId);
+            
+            // Update customer's wait time
+            $newWaitTime = $estimator->calculateWaitTime(
+                $customer->party_size,
+                $customer->priority_type,
+                $customerId
+            );
+            
+            $customer->update(['estimated_wait_minutes' => $newWaitTime]);
+            
+            return response()->json([
+                'success' => true,
+                'customer_id' => $customerId,
+                'queue_number' => $customer->queue_number,
+                'formatted_queue_number' => $customer->formatted_queue_number,
+                'position' => $position['position'],
+                'customers_ahead' => $position['customers_ahead'],
+                'total_waiting' => $position['total_waiting'],
+                'estimated_wait_minutes' => $newWaitTime,
+                'formatted_wait_time' => $position['formatted_wait_time'],
+                'status' => $customer->status,
+                'last_updated' => now()->format('g:i A'),
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Customer queue status error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Unable to get queue status',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Format wait time for display
+     */
+    private function formatWaitTime($minutes)
+    {
+        if ($minutes <= 0) {
+            return 'Available now';
+        } elseif ($minutes < 60) {
+            return $minutes . ' minutes';
+        } else {
+            $hours = floor($minutes / 60);
+            $remainingMinutes = $minutes % 60;
+            return $hours . ' hour' . ($hours > 1 ? 's' : '') . 
+                   ($remainingMinutes > 0 ? ' ' . $remainingMinutes . ' minute' . ($remainingMinutes > 1 ? 's' : '') : '');
+        }
+    }
 }

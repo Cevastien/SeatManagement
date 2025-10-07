@@ -13,6 +13,14 @@
         tailwind.config = {
             theme: {
                 extend: {
+                    colors: {
+                        primary: '#6366f1',
+                        'primary-dark': '#4f46e5',
+                        secondary: '#2c3e50',
+                        accent: '#f59e0b',
+                        neutral: '#f5f7fa',
+                        'neutral-dark': '#e3e8ef'
+                    },
                     fontFamily: {
                         'inter': ['Inter', 'sans-serif']
                     }
@@ -28,79 +36,23 @@
             -webkit-user-select: none;
             user-select: none;
             font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #f5f7fa 0%, #e8edf2 100%);
+            background-color: #f5f7fa;
         }
 
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
-            20%, 40%, 60%, 80% { transform: translateX(8px); }
+        /* Custom checked state for priority buttons */
+        input[name="is_priority"]:checked + div {
+            background-color: #111827 !important;
+            border-color: #111827 !important;
+            color: white !important;
         }
 
-        .input-field {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        input[name="is_priority"]:checked + div p {
+            color: white !important;
         }
 
-        .input-field:focus {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(17, 24, 39, 0.12);
-        }
-
-        .input-field:hover:not(:focus) {
-            border-color: #6b7280;
-        }
-
-        .input-field.valid {
-            border-color: #10b981;
-            background-color: #f0fdf4;
-        }
-
-        .input-field.error {
-            border-color: #ef4444;
-            background-color: #fef2f2;
-            animation: shake 0.5s;
-        }
-
-        .counter-btn {
-            transition: all 0.2s ease;
+        .contact-prefix {
+            pointer-events: none;
             user-select: none;
-        }
-
-        .counter-btn:hover:not(:disabled) {
-            transform: scale(1.05);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        }
-
-        .counter-btn:active:not(:disabled) {
-            transform: scale(0.95);
-        }
-
-        .counter-btn:disabled {
-            opacity: 0.3;
-            cursor: not-allowed;
-        }
-
-        .radio-option {
-            transition: all 0.3s ease;
-            cursor: pointer;
-        }
-
-        .radio-option:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            border-color: #9ca3af;
-        }
-
-        input[type="radio"]:checked + .radio-option {
-            background: #111827;
-            border-color: #111827;
-            color: white;
-            transform: scale(1.02);
-            box-shadow: 0 8px 20px rgba(17, 24, 39, 0.25);
-        }
-
-        input[type="radio"]:checked + .radio-option * {
-            color: white;
         }
 
         .priority-section {
@@ -109,7 +61,7 @@
 
         .priority-section.show {
             max-height: 500px;
-            opacity: 1;
+                opacity: 1;
             margin-top: 2rem;
         }
 
@@ -119,26 +71,19 @@
             margin-top: 0;
             overflow: hidden;
         }
-
-        .contact-prefix {
-            pointer-events: none;
-            user-select: none;
-        }
     </style>
 </head>
 
 <body class="font-inter h-screen flex flex-col">
     <!-- Header -->
     <div class="flex-shrink-0" style="background-color: #111827;">
-        <div class="p-8 flex items-center justify-between">
+        <div class="p-6 flex items-center justify-between">
             <div class="flex items-center space-x-4">
                 <div>
                     <div class="flex items-center space-x-3 mb-1">
-                        <h1 class="text-2xl font-semibold text-white">Guest Information</h1>
+                        <h1 class="text-2xl font-bold text-white">Guest Information</h1>
                         <span class="px-3 py-1 text-white text-xs font-semibold rounded-full"
-                            style="background-color: #374151;">
-                            Step 1 of 4
-                        </span>
+                            style="background-color: #374151;" id="stepIndicator">Step 1 of 3</span>
                     </div>
                     <p class="text-gray-300 text-sm">Please provide your party details</p>
                 </div>
@@ -152,106 +97,84 @@
         </div>
     </div>
 
-    <!-- Main Content -->
-    <div class="flex-1 flex items-start justify-center px-8 py-4 bg-gray-100" style="overflow-y: auto;">
-        <div class="w-full max-w-4xl mx-auto" style="margin-top: 1rem;">
+    <!-- Main Content - Full Width Form -->
+    <div class="flex-1 flex items-center justify-center px-8 py-8" style="overflow-y: auto;">
+        <div class="w-full max-w-3xl">
             <form id="registrationForm" class="space-y-8">
-
                 <!-- Name/Nickname -->
                 <div>
-                    <label class="block">
-                        <div class="flex items-center space-x-2 mb-3">
-                            <i class="fas fa-user text-gray-700 text-lg"></i>
-                            <h3 class="text-lg font-semibold text-gray-900">Name or Nickname</h3>
-                            <span class="text-red-500 text-base">*</span>
-                        </div>
-                        <input type="text" id="name" name="name" placeholder="Enter your name"
-                            class="input-field w-full px-5 py-4 border-3 border-gray-300 rounded-xl text-lg bg-white focus:border-gray-900 focus:outline-none"
-                            oninput="handleNameInput()">
-                        <p class="text-xs text-gray-600 mt-2">
-                            Representative's name for priority guests
-                        </p>
-                    </label>
+                    <h3 class="text-2xl font-bold text-secondary mb-4">Name/Nickname <span class="text-red-500">*</span>
+                    </h3>
+                    <input type="text" id="name" name="name" placeholder="Enter your name"
+                           value="{{ $editField && $existingData ? ($existingData['name'] ?? '') : '' }}"
+                        class="w-full px-6 py-5 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none text-xl bg-white"
+                        oninput="handleNameInput()" required>
+                    <p class="text-base text-gray-600 mt-3">Enter your name (or representative's name for priority
+                        guests)</p>
                 </div>
 
                 <!-- Party Size -->
                 <div>
-                    <div class="flex items-center space-x-2 mb-3">
-                        <i class="fas fa-users text-gray-700 text-lg"></i>
-                        <h3 class="text-lg font-semibold text-gray-900">Party Size</h3>
-                        <span class="text-red-500 text-base">*</span>
-                    </div>
-
-                    <div class="flex items-center justify-center space-x-6 my-4">
+                    <h3 class="text-2xl font-bold text-secondary mb-4">How many people total, including yourself? <span class="text-red-500">*</span>
+                    </h3>
+                    <div class="flex items-center space-x-6">
                         <button type="button" onclick="decrementPartySize()"
-                            class="counter-btn w-20 h-20 bg-gray-100 border-3 border-gray-300 rounded-xl flex items-center justify-center">
-                            <span class="text-4xl text-gray-700 font-light">−</span>
+                            class="w-16 h-16 bg-white hover:bg-gray-50 border-2 border-gray-200 rounded-xl flex items-center justify-center transition">
+                            <span class="text-3xl text-gray-600">-</span>
                         </button>
-                        <input type="text" id="party_size" value="1" readonly
-                            class="w-28 text-center px-4 py-3 border-3 border-gray-400 rounded-xl text-4xl font-bold bg-gray-50 cursor-default">
+                        <input type="number" id="party_size" name="party_size" 
+                               value="{{ $editField && $existingData ? ($existingData['party_size'] ?? '1') : '1' }}" min="1" max="20"
+                            class="w-32 text-center px-6 py-5 border-2 border-gray-200 rounded-xl text-2xl font-semibold focus:border-primary focus:outline-none bg-white"
+                            oninput="handlePartySizeInput()" onkeydown="handlePartySizeKeydown(event)" onfocus="selectAllText(this)" onblur="handlePartySizeBlur()" required>
                         <button type="button" onclick="incrementPartySize()"
-                            class="counter-btn w-20 h-20 bg-gray-900 text-white rounded-xl flex items-center justify-center">
-                            <span class="text-4xl font-light">+</span>
+                            class="w-16 h-16 bg-white hover:bg-gray-50 border-2 border-gray-200 rounded-xl flex items-center justify-center transition">
+                            <span class="text-3xl text-gray-600">+</span>
                         </button>
                     </div>
-
-                    <p class="text-xs text-gray-600 text-center" id="partySizeHelpText">
-                        Maximum 50 guests. For larger groups, contact staff.
-                    </p>
+                    <p class="text-base text-gray-600 mt-3" id="partySizeHelpText">Count everyone in your group, including yourself. For example: if you have 3 friends with you, enter 4 total. Maximum 20 people per party.</p>
                 </div>
 
                 <!-- Contact Number -->
                 <div>
-                    <div class="flex items-center space-x-2 mb-3">
-                        <i class="fas fa-phone text-gray-700 text-lg"></i>
-                        <h3 class="text-lg font-semibold text-gray-900">Contact Number</h3>
-                        <span class="text-gray-500 text-xs">(Optional)</span>
-                    </div>
-
+                    <h3 class="text-2xl font-bold text-secondary mb-4">Contact Number (Optional)</h3>
                     <div class="relative">
                         <div
-                            class="contact-prefix absolute left-5 top-1/2 transform -translate-y-1/2 text-lg text-gray-500 font-semibold">
+                            class="contact-prefix absolute left-6 top-1/2 transform -translate-y-1/2 text-xl text-gray-500 font-semibold">
                             09
                         </div>
-                        <input type="text" id="contact" name="contact" placeholder="XX XXX XXXX"
-                            class="input-field w-full px-5 py-4 pl-16 border-3 border-gray-300 rounded-xl text-lg bg-white focus:border-gray-900 focus:outline-none"
-                            oninput="handleContactInput()" onkeypress="handleContactInput()"
+                        <input type="tel" id="contact" name="contact" placeholder="XX XXX XXXX"
+                               value="{{ $editField && $existingData ? ($existingData['contact_number'] ?? '') : '' }}"
+                            class="w-full px-6 py-5 pl-16 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none text-xl bg-white"
+                            oninput="handleContactInput()" onkeypress="handleContactInput()" onblur="validateContactOnBlur()"
                             onkeydown="preventExcessInput(event)" onpaste="setTimeout(handleContactInput, 0)"
                             maxlength="9" pattern="[0-9]*" inputmode="numeric">
                     </div>
-                    <p class="text-xs text-gray-600 mt-2">
-                        We'll notify you when your table is ready
-                    </p>
+                    <p class="text-base text-gray-600 mt-3">We'll use this to notify you when your turn is ready</p>
                 </div>
 
-                <!-- Priority Check -->
+                <!-- Priority Check (Placeholder Space) -->
                 <div id="prioritySection" class="priority-section hide">
                     <div>
-                        <div class="flex items-center space-x-2 mb-3">
-                            <i class="fas fa-star text-gray-700 text-lg"></i>
-                            <h3 class="text-lg font-semibold text-gray-900">Priority Guest?</h3>
-                            <span class="text-red-500 text-base">*</span>
-                        </div>
-
-                        <p class="text-sm text-gray-600 mb-4">
-                            Does your party include a Senior Citizen (60+), PWD, or Pregnant Guest?
+                        <h3 class="text-2xl font-bold text-secondary mb-4">Priority Check Question <span
+                                class="text-red-500">*</span></h3>
+                        <p class="text-base text-gray-600 mb-4">
+                            Does your party include a Senior, PWD, or Pregnant Guest?
                         </p>
-
                         <div class="grid grid-cols-2 gap-4">
-                            <label class="relative">
-                                <input type="radio" name="is_priority" value="1" class="sr-only"
-                                    onchange="showPriorityModal()">
-                                <div class="radio-option bg-white border-3 border-gray-300 rounded-xl p-5 text-center">
-                                    <i class="fas fa-check-circle text-2xl mb-2 text-gray-400"></i>
-                                    <p class="font-semibold text-base text-gray-700">Yes</p>
+                            <label>
+                                <input type="radio" name="is_priority" value="1" class="sr-only peer" onchange="showPriorityModal()"
+                                       {{ $editField && $existingData && ($existingData['is_priority'] ?? '0') == '1' ? 'checked' : '' }}>
+                                <div
+                                    class="w-full bg-white hover:bg-gray-50 border-2 border-gray-200 rounded-xl p-5 transition cursor-pointer text-center">
+                                    <p class="font-bold text-lg">Yes</p>
                                 </div>
                             </label>
-
-                            <label class="relative">
-                                <input type="radio" name="is_priority" value="0" class="sr-only" checked>
-                                <div class="radio-option bg-white border-3 border-gray-300 rounded-xl p-5 text-center">
-                                    <i class="fas fa-times-circle text-2xl mb-2 text-gray-400"></i>
-                                    <p class="font-semibold text-base text-gray-700">No</p>
+                            <label>
+                                <input type="radio" name="is_priority" value="0" class="sr-only peer" onchange="handlePriorityChange()"
+                                       {{ $editField && $existingData && ($existingData['is_priority'] ?? '0') == '0' ? 'checked' : '' }}>
+                                <div
+                                    class="w-full bg-white hover:bg-gray-50 border-2 border-gray-200 rounded-xl p-5 transition cursor-pointer text-center">
+                                    <p class="font-bold text-lg">No</p>
                                 </div>
                             </label>
                         </div>
@@ -262,16 +185,18 @@
     </div>
 
     <!-- Bottom Navigation Bar -->
-    <div class="bg-white px-8 py-6 flex-shrink-0 shadow-lg">
+    <div class="bg-white border-t-2 border-gray-200 px-8 py-4 flex-shrink-0">
         <div class="flex items-center justify-between max-w-6xl mx-auto">
+            <!-- Back Button -->
             <button onclick="goBack()"
-                class="px-16 py-6 bg-white hover:bg-gray-50 border-3 border-gray-400 text-gray-800 font-semibold text-xl rounded-2xl transition-all duration-200 flex items-center space-x-3 shadow-md hover:shadow-lg">
+                class="px-16 py-5 bg-white hover:bg-gray-50 border-2 border-gray-300 text-gray-800 font-bold text-xl rounded-xl transition flex items-center space-x-3">
                 <i class="fas fa-arrow-left text-2xl"></i>
                 <span>Go Back</span>
             </button>
 
+            <!-- Continue Button -->
             <button type="button" id="continueBtn" onclick="submitForm()" style="background-color: #111827;"
-                class="px-20 py-6 hover:bg-black text-white font-semibold text-xl rounded-2xl shadow-xl transition-all duration-200 flex items-center space-x-3 hover:shadow-2xl hover:scale-105">
+                class="px-16 py-5 hover:bg-gray-800 text-white font-bold text-xl rounded-xl shadow-lg transition flex items-center space-x-3">
                 <span>Continue</span>
                 <i class="fas fa-arrow-right text-2xl"></i>
             </button>
@@ -279,62 +204,59 @@
     </div>
 
     <!-- Priority Type Modal -->
-    <div id="priorityModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
-        style="display: none; z-index: 1000;">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full mx-4 p-8">
-            <h2 class="text-2xl font-semibold text-gray-900 mb-6 text-center">Priority Guest Type</h2>
-
+    <div id="priorityModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center" style="display: none; z-index: 1000;">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-3xl w-full mx-4 p-8">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6 text-center">Priority Guest Type</h2>
+            
             <div class="space-y-4 mb-8">
-                <label
-                    class="flex items-start space-x-4 p-5 border-2 border-gray-200 rounded-xl hover:border-primary hover:bg-gray-50 cursor-pointer transition">
-                    <input type="radio" name="priority_type" value="senior" class="mt-1"
-                        onchange="selectPriorityType(this)">
+                <!-- Senior Citizens -->
+                <label class="flex items-start space-x-4 p-5 border-2 border-gray-200 rounded-xl hover:border-primary hover:bg-gray-50 cursor-pointer transition">
+                    <input type="radio" name="priority_type" value="senior" class="mt-1" onchange="selectPriorityType(this)"
+                           {{ $editField && $existingData && ($existingData['priority_type'] ?? '') == 'senior' ? 'checked' : '' }}>
                     <div class="flex-1">
                         <div class="flex items-center space-x-3 mb-2">
                             <i class="fas fa-user text-2xl text-gray-700"></i>
-                            <h3 class="font-semibold text-lg text-gray-900">Senior Citizens (60+)</h3>
+                            <h3 class="font-bold text-lg text-gray-900">Senior Citizens (60+)</h3>
                         </div>
-                        <p class="text-sm text-gray-600">A valid ID is preferred. If unavailable, please approach our
-                            staff for assistance.</p>
+                        <p class="text-sm text-gray-600">A valid ID is preferred. If unavailable, please approach our staff for assistance.</p>
                     </div>
                 </label>
 
-                <label
-                    class="flex items-start space-x-4 p-5 border-2 border-gray-200 rounded-xl hover:border-primary hover:bg-gray-50 cursor-pointer transition">
-                    <input type="radio" name="priority_type" value="pwd" class="mt-1"
-                        onchange="selectPriorityType(this)">
+                <!-- PWD -->
+                <label class="flex items-start space-x-4 p-5 border-2 border-gray-200 rounded-xl hover:border-primary hover:bg-gray-50 cursor-pointer transition">
+                    <input type="radio" name="priority_type" value="pwd" class="mt-1" onchange="selectPriorityType(this)"
+                           {{ $editField && $existingData && ($existingData['priority_type'] ?? '') == 'pwd' ? 'checked' : '' }}>
                     <div class="flex-1">
                         <div class="flex items-center space-x-3 mb-2">
                             <i class="fas fa-wheelchair text-2xl text-gray-700"></i>
-                            <h3 class="font-semibold text-lg text-gray-900">Persons with Disabilities (PWD)</h3>
+                            <h3 class="font-bold text-lg text-gray-900">Persons with Disabilities (PWD)</h3>
                         </div>
-                        <p class="text-sm text-gray-600">A valid ID is preferred. If unavailable, please approach our
-                            staff for assistance.</p>
+                        <p class="text-sm text-gray-600">A valid ID is preferred. If unavailable, please approach our staff for assistance.</p>
                     </div>
                 </label>
 
-                <label
-                    class="flex items-start space-x-4 p-5 border-2 border-gray-200 rounded-xl hover:border-primary hover:bg-gray-50 cursor-pointer transition">
-                    <input type="radio" name="priority_type" value="pregnant" class="mt-1"
-                        onchange="selectPriorityType(this)">
+                <!-- Pregnant -->
+                <label class="flex items-start space-x-4 p-5 border-2 border-gray-200 rounded-xl hover:border-primary hover:bg-gray-50 cursor-pointer transition">
+                    <input type="radio" name="priority_type" value="pregnant" class="mt-1" onchange="selectPriorityType(this)"
+                           {{ $editField && $existingData && ($existingData['priority_type'] ?? '') == 'pregnant' ? 'checked' : '' }}>
                     <div class="flex-1">
                         <div class="flex items-center space-x-3 mb-2">
                             <i class="fas fa-user-plus text-2xl text-gray-700"></i>
-                            <h3 class="font-semibold text-lg text-gray-900">Pregnant Guests</h3>
+                            <h3 class="font-bold text-lg text-gray-900">Pregnant Guests</h3>
                         </div>
-                        <p class="text-sm text-gray-600">No ID required; kindly inform our staff for priority access.
-                        </p>
+                        <p class="text-sm text-gray-600">No ID required; kindly inform our staff for priority access.</p>
                     </div>
                 </label>
             </div>
 
+            <!-- Modal Actions -->
             <div class="flex space-x-4">
-                <button onclick="cancelPriorityModal()"
-                    class="flex-1 px-8 py-4 bg-white hover:bg-gray-50 border-2 border-gray-300 text-gray-800 font-semibold text-lg rounded-xl transition">
+                <button onclick="cancelPriorityModal()" 
+                    class="flex-1 px-8 py-4 bg-white hover:bg-gray-50 border-2 border-gray-300 text-gray-800 font-bold text-lg rounded-xl transition">
                     Cancel
                 </button>
                 <button onclick="confirmPriorityType()" id="continueModalBtn" disabled
-                    class="flex-1 px-8 py-4 text-white font-semibold text-lg rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
+                    class="flex-1 px-8 py-4 text-white font-bold text-lg rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
                     style="background-color: #101825;">
                     Continue
                 </button>
@@ -354,9 +276,54 @@
         // Settings object for dynamic configuration
         let settings = {
             party_size_min: 1,
-            party_size_max: 50,
+            party_size_max: 20,
             restaurant_name: 'GERVACIOS RESTAURANT & LOUNGE'
         };
+
+        // Update step indicators based on customer type
+        function updateStepIndicators(isPriority) {
+            const stepIndicator = document.getElementById('stepIndicator');
+            if (stepIndicator) {
+                if (isPriority) {
+                    stepIndicator.textContent = 'Step 1 of 4';
+                } else {
+                    stepIndicator.textContent = 'Step 1 of 3';
+                }
+            }
+        }
+
+        // Restore data when in edit mode
+        document.addEventListener('DOMContentLoaded', function() {
+            const editField = '{{ $editField ?? "" }}';
+            const existingData = @json($existingData ?? []);
+            
+            if (editField && existingData && Object.keys(existingData).length > 0) {
+                console.log('🔄 Restoring existing data for edit mode:', existingData);
+                
+                // Restore contact number (remove '09' prefix if it exists)
+                const contactValue = existingData.contact_number || '';
+                if (contactValue.startsWith('09')) {
+                    document.getElementById('contact').value = contactValue.substring(2);
+                } else {
+                    document.getElementById('contact').value = contactValue;
+                }
+                
+                // In edit mode, let user freely choose priority - don't force any state
+                // Just restore the existing selection without automatically showing/hiding sections
+                if (existingData.is_priority === '1') {
+                    // User was priority - restore their selection
+                    selectedPriorityType = existingData.priority_type || null;
+                    console.log('Edit mode: User was priority, restored type:', selectedPriorityType);
+                } else {
+                    // User was non-priority - clear priority type but let them choose
+                    selectedPriorityType = null;
+                    console.log('Edit mode: User was non-priority, cleared type but can choose');
+                }
+                
+                // Don't automatically show/hide priority section - let user decide
+                // The priority section will show/hide based on their current choice
+            }
+        });
 
         // Update date and time
         function updateDateTime() {
@@ -394,7 +361,7 @@
                 if (data.success) {
                     settings = {
                         party_size_min: data.settings.party_size_min || 1,
-                        party_size_max: data.settings.party_size_max || 50,
+                        party_size_max: data.settings.party_size_max || 20,
                         restaurant_name: data.settings.restaurant_name || 'GERVACIOS RESTAURANT & LOUNGE'
                     };
                     
@@ -418,7 +385,7 @@
             // Update the help text
             const helpText = document.getElementById('partySizeHelpText');
             if (helpText) {
-                helpText.textContent = `You may enter between ${settings.party_size_min} and ${settings.party_size_max} people. For groups larger than ${settings.party_size_max}, please approach our staff for assistance.`;
+                helpText.textContent = `Count everyone in your group, including yourself. For example: if you have 3 friends with you, enter 4 total. Maximum ${settings.party_size_max} people per party.`;
             }
         }
 
@@ -509,6 +476,7 @@
             document.querySelectorAll('input[name="is_priority"]').forEach(radio => {
                 radio.addEventListener('change', function() {
                     clearPrioritySectionError();
+                    handlePriorityChange();
                 });
             });
 
@@ -534,6 +502,85 @@
             }
         }
 
+        // Handle party size input - allow typing
+        function handlePartySizeInput() {
+            const partySizeInput = document.getElementById('party_size');
+            let value = partySizeInput.value;
+            
+            // Allow empty field during typing
+            if (value === '') {
+                clearFieldError('party_size');
+                hidePrioritySection();
+                return;
+            }
+            
+            // Parse the value and validate
+            let numValue = parseInt(value);
+            if (isNaN(numValue)) {
+                // If not a valid number, show error
+                showFieldError('party_size', 'Please enter a valid number');
+                return;
+            }
+            
+            // Ensure value is within bounds
+            if (numValue < settings.party_size_min) {
+                numValue = settings.party_size_min;
+            } else if (numValue > settings.party_size_max) {
+                numValue = settings.party_size_max;
+            }
+            
+            partySizeInput.value = numValue;
+            clearFieldError('party_size'); // Clear any party size errors
+            showPrioritySection(); // Show priority section when party size is set
+        }
+
+        // Handle keydown events for better input control
+        function handlePartySizeKeydown(event) {
+            // Allow: backspace, delete, tab, escape, enter, home, end, left, right, up, down
+            if ([8, 9, 27, 13, 46, 35, 36, 37, 38, 39, 40].indexOf(event.keyCode) !== -1 ||
+                // Allow: Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+                (event.ctrlKey && [65, 67, 86, 88].indexOf(event.keyCode) !== -1) ||
+                // Allow: numbers 0-9
+                (event.keyCode >= 48 && event.keyCode <= 57) ||
+                // Allow: numpad numbers 0-9
+                (event.keyCode >= 96 && event.keyCode <= 105)) {
+                return;
+            }
+            // Block all other keys
+            event.preventDefault();
+        }
+
+        // Select all text when input is focused for easy editing
+        function selectAllText(input) {
+            setTimeout(() => {
+                input.select();
+            }, 0);
+        }
+
+        // Handle when user leaves the party size field
+        function handlePartySizeBlur() {
+            const partySizeInput = document.getElementById('party_size');
+            let value = partySizeInput.value;
+            
+            // If field is empty when user leaves, show error
+            if (value === '') {
+                showFieldError('party_size', 'Party size is required');
+                return;
+            }
+            
+            // Validate the number
+            let numValue = parseInt(value);
+            if (isNaN(numValue) || numValue < settings.party_size_min) {
+                showFieldError('party_size', 'Please enter a valid party size');
+                return;
+            }
+            
+            // Clear any errors and show priority section
+            clearFieldError('party_size');
+            showPrioritySection();
+        }
+
+
         // Handle contact number input with Philippine format validation
         function handleContactInput() {
             const contactInput = document.getElementById('contact');
@@ -541,17 +588,27 @@
             
             console.log('Contact input length:', value.length, 'Value:', value);
             
+            // Clear any existing errors first
+            clearFieldError('contact');
+            
+            // If field is empty, no validation needed
+            if (value === '') {
+                return;
+            }
+            
             // If user typed 11 digits starting with 09, strip the first 2 characters
             if (value.startsWith('09') && value.length === 11) {
                 value = value.substring(2);
                 console.log('Stripped 09 prefix, remaining:', value);
             }
             
-            // Force limit to maximum 9 digits - cut off anything beyond that
-            if (value.length > 9) {
-                console.warn('Contact number exceeds 9 digits, trimming...');
+            // Validate the final length
+            if (value.length > 0 && value.length < 9) {
+                showFieldError('contact', 'Invalid Contact Number', 'Please enter a complete 9-digit mobile number (XX XXX XXXX). The "09" prefix is already included.');
+            } else if (value.length > 9) {
+                showFieldError('contact', 'Invalid Contact Number', 'Please enter a valid 9-digit mobile number (XX XXX XXXX). The "09" prefix is already included.');
+                // Trim to 9 digits
                 value = value.substring(0, 9);
-                console.warn('Contact number limited to 9 digits. Extra characters removed.');
             }
             
             contactInput.value = value;
@@ -563,13 +620,69 @@
             const input = event.target;
             if (input.value.length >= 9 && event.key !== 'Backspace' && event.key !== 'Delete' && event.key !== 'ArrowLeft' && event.key !== 'ArrowRight' && event.key !== 'Tab') {
                 event.preventDefault();
-                console.warn('Maximum 9 digits allowed for contact number');
+                console.warn('Maximum 9 digits allowed for contact number (09 prefix is already included)');
+            }
+        }
+
+        // Validate contact number when user leaves the field
+        function validateContactOnBlur() {
+            const contactInput = document.getElementById('contact');
+            let value = contactInput.value.replace(/\D/g, ''); // Remove non-digits
+            
+            // Clear any existing errors first
+            clearFieldError('contact');
+            
+            // If field is empty, no validation needed (optional field)
+            if (value === '') {
+                return;
+            }
+            
+            // Validate exact length
+            if (value.length !== 9) {
+                showFieldError('contact', 'Invalid Contact Number', 'Please enter a complete 11-digit mobile number (09XX XXX XXXX) or leave blank.');
             }
         }
 
         // Show priority type modal when "Yes" is selected
         function showPriorityModal() {
             document.getElementById('priorityModal').style.display = 'flex';
+        }
+
+        // Handle priority selection change
+        function handlePriorityChange() {
+            const isPriorityYes = document.querySelector('input[name="is_priority"][value="1"]').checked;
+            const isPriorityNo = document.querySelector('input[name="is_priority"][value="0"]').checked;
+            
+            console.log('Priority change detected - Yes:', isPriorityYes, 'No:', isPriorityNo);
+            console.log('Current selectedPriorityType:', selectedPriorityType);
+            
+            if (isPriorityNo) {
+                // If "No" is selected, clear priority type and hide priority section
+                selectedPriorityType = null;
+                hidePrioritySection();
+                console.log('Priority set to No - cleared priority type and hid section');
+            } else if (isPriorityYes) {
+                // If "Yes" is selected, show priority section
+                showPrioritySection();
+                console.log('Priority set to Yes - showing priority section');
+                
+                // If user was previously priority and had a type selected, restore it
+                const urlParams = new URLSearchParams(window.location.search);
+                const isEditMode = urlParams.get('edit') === '1';
+                if (isEditMode && !selectedPriorityType) {
+                    // Check if we have existing data to restore
+                    const existingData = @json($existingData ?? []);
+                    if (existingData.priority_type && existingData.is_priority === '1') {
+                        selectedPriorityType = existingData.priority_type;
+                        // Check the appropriate radio button
+                        const priorityRadio = document.querySelector(`input[name="priority_type"][value="${existingData.priority_type}"]`);
+                        if (priorityRadio) {
+                            priorityRadio.checked = true;
+                            console.log('Restored priority type selection:', existingData.priority_type);
+                        }
+                    }
+                }
+            }
         }
 
         // Cancel priority modal
@@ -633,7 +746,7 @@
                 clearFieldError('party_size'); // Clear any party size errors
                 showPrioritySection(); // Show priority section when party size is set
             } else {
-                alert(`Party size limit reached!\n\nYou may only enter between ${settings.party_size_min} and ${settings.party_size_max} people. For groups larger than ${settings.party_size_max}, please approach our staff for assistance.`);
+                showFieldError('party_size', `Party size limit reached! Maximum ${settings.party_size_max} people per party. For larger groups, please approach our staff for assistance.`);
             }
         }
 
@@ -692,18 +805,12 @@
             }
             
             prioritySection.style.maxHeight = '400px';
+            
+            // Update step indicators to show 4 steps for priority customers
+            updateStepIndicators(true);
             prioritySection.style.opacity = '1';
             prioritySection.style.marginTop = '1.5rem';
             prioritySection.style.overflow = 'visible';
-            
-            // Scroll to show the priority section smoothly
-            setTimeout(() => {
-                prioritySection.scrollIntoView({ 
-                    behavior: 'smooth', 
-                    block: 'nearest',
-                    inline: 'nearest'
-                });
-            }, 300);
             
             console.log('Priority section shown');
         }
@@ -714,6 +821,9 @@
             prioritySection.style.opacity = '0';
             prioritySection.style.marginTop = '0';
             prioritySection.style.overflow = 'hidden';
+            
+            // Update step indicators to show 3 steps for regular customers
+            updateStepIndicators(false);
             
             console.log('Priority section hidden');
         }
@@ -877,14 +987,14 @@
             
             // Validate party size
             if (!partySize || partySize < settings.party_size_min || partySize > settings.party_size_max) {
-                showFieldError('party_size', 'Invalid Party Size', `Party size must be between ${settings.party_size_min} and ${settings.party_size_max} people.`);
+                showFieldError('party_size', 'Invalid Party Size', `Please enter the total number of people in your group (including yourself), between ${settings.party_size_min} and ${settings.party_size_max}.`);
                 hasErrors = true;
             }
             
             // Validate contact (if provided)
             if (contactInput) {
                 if (!/^[0-9]{9}$/.test(contactInput)) {
-                    showFieldError('contact', 'Invalid Contact Number', 'Please enter a valid 9-digit mobile number (without 09).');
+                    showFieldError('contact', 'Invalid Contact Number', 'Please enter a complete 11-digit mobile number (09XX XXX XXXX) or leave blank.');
                     hasErrors = true;
                 }
             }
@@ -935,7 +1045,7 @@
             if (contactInput.length > 0) {
                 // Ensure contact number is not more than 9 digits (since 09 is visual prefix)
                 if (contactInput.length > 9) {
-                    showFieldError('contact', 'Contact number too long', 'Enter maximum 9 digits (e.g., 17 123 4567). Full number will be 0917 123 4567');
+                    showFieldError('contact', 'Contact number too long', 'Enter maximum 9 digits (e.g., 17 123 4567). The "09" prefix is already included.');
                     hasErrors = true;
                 } else {
                     // Check if user typed complete number (9 digits) or partial number (1-8 digits)
@@ -972,23 +1082,15 @@
             if (contactInput) {
                 checkDuplicateContact(contactInput).then(duplicateCheck => {
                     if (duplicateCheck.is_duplicate) {
-                        console.log('⚠️ DUPLICATE FOUND! Showing modal...', duplicateCheck);
+                        console.log('⚠️ DUPLICATE FOUND! Showing inline error...', duplicateCheck);
                         
-                        // Show duplicate contact modal
-                        showDuplicateContactModal(
-                            duplicateCheck,
-                            (duplicateData) => {
-                                // Continue anyway - proceed with form submission
-                                console.log('✅ User chose to continue anyway');
-                                proceedWithFormSubmission(name, partySize, contactInput, isPriority);
-                            },
-                            () => {
-                                // Change number - clear contact field and focus on it
-                                console.log('🔄 User chose to change number');
-                                document.getElementById('contact').value = '';
-                                document.getElementById('contact').focus();
-                            }
-                        );
+                        // Show duplicate contact error as inline error (like other field validations)
+                        showFieldError('contact', 'Duplicate Contact Number', 'This contact number is already registered in the system. Please use a different contact number.');
+                        
+                        // Clear the contact field and focus on it
+                        document.getElementById('contact').value = '';
+                        document.getElementById('contact').focus();
+                        
                     } else {
                         console.log('✅ No duplicate found, proceeding with registration');
                         proceedWithFormSubmission(name, partySize, contactInput, isPriority);
@@ -1015,18 +1117,43 @@
             formData.append('party_size', partySize);
             formData.append('contact', contactInput); // Send just the digits, server will add 09
             formData.append('is_priority', isPriority ? isPriority.value : '0');
-            if (selectedPriorityType) {
-                formData.append('priority_type', selectedPriorityType);
+            
+            // Handle priority type based on user's choice
+            if (isPriority && isPriority.value === '1') {
+                // User chose "Yes" - require a priority type
+                if (selectedPriorityType) {
+                    formData.append('priority_type', selectedPriorityType);
+                    console.log('✅ Sending priority_type:', selectedPriorityType);
+                } else {
+                    // User chose "Yes" but didn't select a type - this will trigger validation error
+                    formData.append('priority_type', '');
+                    console.log('⚠️ User chose Yes but no priority type selected - sending empty string');
+                }
+            } else {
+                // User chose "No" - explicitly don't send priority_type field
+                console.log('✅ User chose No - not sending priority_type field');
             }
+            
+            // Add edit mode flag
+            const urlParams = new URLSearchParams(window.location.search);
+            const isEditMode = urlParams.get('edit') === '1';
+            formData.append('is_edit_mode', isEditMode ? '1' : '0');
 
             // Debug logging
-            console.log('Form data being sent:');
+            console.log('=== FORM SUBMISSION DEBUG ===');
             console.log('name:', name);
             console.log('party_size:', partySize);
             console.log('contact:', contactInput);
             console.log('is_priority:', isPriority ? isPriority.value : '0');
-            console.log('priority_type:', selectedPriorityType);
+            console.log('selectedPriorityType:', selectedPriorityType);
             console.log('isPriority element:', isPriority);
+            
+            // Log what we're actually sending
+            console.log('=== FORM DATA BEING SENT ===');
+            for (let [key, value] of formData.entries()) {
+                console.log(`FormData: ${key} = ${value}`);
+            }
+            console.log('=== END FORM DATA ===');
 
             // Submit to database
             fetch('{{ route("kiosk.registration.store") }}', {
@@ -1056,11 +1183,28 @@
                     
                 } else {
                     if (data.errors) {
-                        let errorMessage = 'Please fix the following errors:\n\n';
+                        // Show inline errors for field-specific errors
+                        let hasFieldErrors = false;
                         for (const [field, messages] of Object.entries(data.errors)) {
-                            errorMessage += `• ${messages[0]}\n`;
+                            if (field === 'contact' && messages[0].includes('already registered')) {
+                                // Show duplicate contact error as inline error
+                                showFieldError('contact', 'Duplicate Contact Number', messages[0]);
+                                hasFieldErrors = true;
+                            } else if (['name', 'party_size', 'contact', 'is_priority', 'priority_type'].includes(field)) {
+                                // Show other field errors as inline errors
+                                showFieldError(field, 'Validation Error', messages[0]);
+                                hasFieldErrors = true;
+                            }
                         }
-                        showIncompleteModal(errorMessage);
+                        
+                        // If no field-specific errors were handled, show general modal
+                        if (!hasFieldErrors) {
+                            let errorMessage = 'Please fix the following errors:\n\n';
+                            for (const [field, messages] of Object.entries(data.errors)) {
+                                errorMessage += `• ${messages[0]}\n`;
+                            }
+                            showIncompleteModal(errorMessage);
+                        }
                     } else {
                         showIncompleteModal(data.message || 'Registration failed. Please try again.');
                     }
@@ -1076,22 +1220,28 @@
 
         // Show loading overlay
         function showLoading() {
-            document.getElementById('loadingOverlay').style.display = 'flex';
+            // HIDDEN: Loading modal display disabled but functionality preserved
+            console.log('Loading modal hidden - saving to database...');
             document.getElementById('continueBtn').disabled = true;
         }
 
         // Hide loading overlay
         function hideLoading() {
-            document.getElementById('loadingOverlay').style.display = 'none';
+            // HIDDEN: Loading modal display disabled but functionality preserved
+            console.log('Loading modal hidden - database save complete');
             document.getElementById('continueBtn').disabled = false;
         }
 
         // Incomplete Information Modal Functions
         function showIncompleteModal(message = 'Some required fields are missing.') {
-            document.getElementById('incompleteMessage').textContent = message;
-            const modal = document.getElementById('incompleteModal');
-            modal.classList.remove('hidden');
-            document.body.style.overflow = 'hidden';
+            // HIDDEN: Incomplete Information modal display disabled but functionality preserved
+            console.log('Incomplete Information modal hidden - error logged:', message);
+            
+            // Log the error for debugging
+            console.error('Registration Error:', message);
+            
+            // Show a simple alert instead of modal
+            alert('Registration Error: ' + message);
         }
 
         function closeIncompleteModal() {
@@ -1163,65 +1313,22 @@
         </div>
     </div>
 
-    <!-- Duplicate Contact Modal -->
-    @include('components.duplicate-contact-modal')
+    <!-- Duplicate Contact Modal - Removed (now using simple error message) -->
 
     <!-- Session Timeout Modal Manager -->
     <script src="{{ asset('js/session-timeout-modal.js') }}"></script>
 
     <script>
-        // Duplicate Contact Check Functions
-        async function checkDuplicateContact(contactNumber) {
-            try {
-                console.log('🌐 Making API call to check duplicate contact:', contactNumber);
-                
-                const response = await fetch('/kiosk/check-duplicate-contact', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                    },
-                    body: JSON.stringify({
-                        contact: contactNumber
-                    })
-                });
+        // Duplicate Contact Check Functions (removed duplicate - using the one below)
 
-                console.log('📡 API Response status:', response.status);
-
-                if (!response.ok) {
-                    throw new Error(`Network response was not ok: ${response.status}`);
-                }
-
-                const data = await response.json();
-                console.log('📊 API Response data:', data);
-                return data;
-            } catch (error) {
-                console.error('❌ Error checking duplicate contact:', error);
-                return { is_duplicate: false };
-            }
-        }
-
-        // Show Duplicate Contact Modal
-        function showDuplicateContactModal(duplicateData, onContinue, onChange) {
-            if (window.duplicateContactModal) {
-                // Add the entered contact number to the duplicate data for display
-                const contactInput = document.getElementById('contact').value.trim();
-                if (contactInput) {
-                    duplicateData.enteredContact = contactInput.startsWith('09') ? contactInput : '09' + contactInput;
-                }
-                
-                window.duplicateContactModal.show(duplicateData, onContinue, onChange);
-            } else {
-                console.error('Duplicate contact modal not initialized');
-            }
-        }
+        // Duplicate contact modal function removed - now using simple error message
 
         // Duplicate contact checking function
         async function checkDuplicateContact(contactNumber) {
             try {
                 console.log('🔍 Checking for duplicate contact:', contactNumber);
                 
-                const response = await fetch('/api/check-duplicate-contact', {
+                const response = await fetch('/kiosk/check-duplicate-contact', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1247,72 +1354,7 @@
             }
         }
 
-        // Show duplicate contact modal
-        function showDuplicateContactModal(duplicateData, onContinue, onChangeNumber) {
-            // Create modal overlay
-            const modalOverlay = document.createElement('div');
-            modalOverlay.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center';
-            modalOverlay.style.zIndex = '2000';
-            modalOverlay.id = 'duplicateContactModal';
-
-            // Create modal content
-            const modalContent = document.createElement('div');
-            modalContent.className = 'bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6';
-            modalContent.innerHTML = `
-                <div class="flex items-center space-x-3 mb-4">
-                    <i class="fas fa-exclamation-triangle text-yellow-500 text-2xl"></i>
-                    <h3 class="text-xl font-bold text-gray-900">Duplicate Contact Number</h3>
-                </div>
-                
-                <p class="text-gray-700 mb-4">
-                    This contact number <span class="font-semibold text-red-600">09${duplicateData.contact}</span> 
-                    is already in the queue at position <span class="font-bold text-blue-600">#${duplicateData.queue_number}</span>.
-                </p>
-                
-                <div class="bg-gray-50 rounded-lg p-4 mb-4 text-sm">
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <span class="font-semibold text-gray-600">Estimated Wait:</span>
-                            <span class="text-blue-600 ml-2">${duplicateData.estimated_wait_time || 'N/A'}</span>
-                        </div>
-                        <div>
-                            <span class="font-semibold text-gray-600">Total in Queue:</span>
-                            <span class="text-blue-600 ml-2">${duplicateData.total_in_queue || 'N/A'}</span>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="flex space-x-3">
-                    <button id="changeNumberBtn" class="flex-1 bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold transition">
-                        Change Number
-                    </button>
-                    <button id="continueAnywayBtn" class="flex-1 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-semibold transition">
-                        Continue Anyway
-                    </button>
-                </div>
-            `;
-
-            modalOverlay.appendChild(modalContent);
-            document.body.appendChild(modalOverlay);
-
-            // Add event listeners
-            document.getElementById('changeNumberBtn').addEventListener('click', () => {
-                document.body.removeChild(modalOverlay);
-                onChangeNumber();
-            });
-
-            document.getElementById('continueAnywayBtn').addEventListener('click', () => {
-                document.body.removeChild(modalOverlay);
-                onContinue(duplicateData);
-            });
-
-            // Close modal when clicking outside
-            modalOverlay.addEventListener('click', (e) => {
-                if (e.target === modalOverlay) {
-                    document.body.removeChild(modalOverlay);
-                }
-            });
-        }
+        // Duplicate contact modal function removed - now using simple error message
     </script>
 </body>
 

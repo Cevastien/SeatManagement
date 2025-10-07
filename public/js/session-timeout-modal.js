@@ -37,75 +37,72 @@ class SessionTimeoutModal {
     }
 
     createModal() {
+        // Remove existing modal if it exists
+        const existingModal = document.getElementById('sessionTimeoutModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
         // Create modal HTML
         const modalHTML = `
-            <div id="sessionTimeoutModal" class="fixed inset-0 z-50 flex items-center justify-center p-8" style="display: none;">
+            <div id="sessionTimeoutModal" class="fixed inset-0 z-[9999] flex items-center justify-center p-4" style="display: none !important;">
                 <!-- Modal Overlay -->
-                <div class="absolute inset-0 bg-black/70 backdrop-blur-md"></div>
+                <div class="absolute inset-0 bg-black bg-opacity-70 backdrop-blur-md"></div>
                 
                 <!-- Modal Container -->
-                <div class="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full mx-4 overflow-hidden">
+                <div class="relative bg-white rounded-3xl shadow-2xl max-w-3xl w-full mx-4 max-h-[85vh] flex flex-col overflow-hidden">
                     <!-- Modal Header -->
-                    <div style="background-color: #111827;" class="px-8 py-6 flex items-center justify-center">
-                        <h2 class="text-white text-2xl font-bold">Session Timeout</h2>
+                    <div style="background-color: #111827;" class="px-8 py-5">
+                        <h2 class="text-white text-2xl font-bold text-center">Session Timeout</h2>
                     </div>
 
                     <!-- Modal Body -->
-                    <div class="px-10 py-12 flex flex-col items-center text-center space-y-8">
-                        <!-- Timeout Icon with Countdown Circle -->
-                        <div class="relative">
+                    <div class="flex-1 overflow-y-auto px-8 py-6 space-y-6">
+                        <!-- Countdown Circle and Timer -->
+                        <div class="flex flex-col items-center space-y-4">
                             <!-- Countdown Circle SVG -->
-                            <div class="countdown-circle" style="width: 160px; height: 160px; position: relative;">
+                            <div class="relative" style="width: 160px; height: 160px;">
                                 <svg width="160" height="160" style="transform: rotate(-90deg);">
-                                    <circle class="circle-bg" cx="80" cy="80" r="72" fill="none" stroke="#e5e7eb" stroke-width="8"></circle>
-                                    <circle id="progressCircle" class="circle-progress" cx="80" cy="80" r="72" fill="none" stroke="#ef4444" stroke-width="8" stroke-linecap="round" style="transition: stroke-dashoffset 1s linear;"></circle>
+                                    <circle cx="80" cy="80" r="72" fill="none" stroke="#e5e7eb" stroke-width="8"></circle>
+                                    <circle id="progressCircle" cx="80" cy="80" r="72" fill="none" stroke="#ef4444" stroke-width="8" stroke-linecap="round" style="transition: stroke-dashoffset 1s linear;"></circle>
                                 </svg>
-                                
+
                                 <!-- Icon in Center -->
                                 <div class="absolute inset-0 flex items-center justify-center">
-                                    <div class="w-20 h-20 bg-amber-500 rounded-full flex items-center justify-center shadow-lg" style="animation: timeoutPulse 2s ease-in-out infinite;">
+                                    <div class="w-20 h-20 bg-amber-500 rounded-full flex items-center justify-center shadow-lg">
                                         <i class="fas fa-clock text-white text-4xl"></i>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- Countdown Timer -->
-                        <div class="space-y-2">
-                            <div class="text-6xl font-bold text-gray-900" id="countdownTimer">10</div>
-                            <p class="text-gray-500 text-lg">seconds remaining</p>
+                            <!-- Countdown Timer -->
+                            <div class="text-center">
+                                <div class="text-6xl font-bold" id="countdownTimer" style="color: #111827;">30</div>
+                                <p class="text-gray-500 text-base mt-1">seconds remaining</p>
+                            </div>
                         </div>
 
                         <!-- Timeout Message -->
-                        <div class="space-y-4 max-w-md">
-                            <h3 class="text-gray-900 text-2xl font-bold">
+                        <div class="space-y-3 text-center">
+                            <h3 class="text-gray-900 text-xl font-bold">
                                 Your session has expired due to inactivity
                             </h3>
-                            <p class="text-gray-600 text-lg leading-relaxed">
+                            <p class="text-gray-600 text-base leading-relaxed">
                                 You will be automatically returned to the start screen shortly.
                             </p>
                         </div>
                     </div>
 
                     <!-- Modal Footer -->
-                    <div class="px-10 py-8 border-t-2 border-gray-200 flex justify-center space-x-4">
-                        <!-- Continue Button -->
+                    <div class="px-8 py-6 border-t border-gray-200 flex items-center justify-center">
+                        <!-- OK - Extend Session Button -->
                         <button 
                             id="continueSessionBtn"
-                            class="px-16 py-5 bg-green-500 hover:bg-green-600 text-white font-bold text-xl rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105 flex items-center space-x-3"
-                        >
-                            <i class="fas fa-play text-xl"></i>
-                            <span>Continue Session</span>
-                        </button>
-
-                        <!-- Go Back Button -->
-                        <button 
-                            id="returnToStartBtn"
                             style="background-color: #111827;"
                             class="px-16 py-5 hover:bg-gray-800 text-white font-bold text-xl rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl flex items-center space-x-3"
                         >
-                            <i class="fas fa-home text-xl"></i>
-                            <span>Return to Start</span>
+                            <i class="fas fa-play text-xl"></i>
+                            <span>OK - Extend Session</span>
                         </button>
                     </div>
                 </div>
@@ -120,11 +117,15 @@ class SessionTimeoutModal {
         this.addModalStyles();
 
         // Add event listeners to modal buttons
-        document.getElementById('continueSessionBtn').addEventListener('click', () => this.continueSession());
-        document.getElementById('returnToStartBtn').addEventListener('click', () => this.returnToStart());
+        const continueBtn = document.getElementById('continueSessionBtn');
+        if (continueBtn) {
+            continueBtn.addEventListener('click', () => this.continueSession());
+        }
 
         // Initialize countdown circle
         this.initCountdownCircle();
+
+        console.log('Modal created successfully:', this.modalElement);
     }
 
     addModalStyles() {
@@ -177,15 +178,28 @@ class SessionTimeoutModal {
 
         this.isModalShown = true;
 
-        // Show modal
-        this.modalElement.style.display = 'flex';
+        // Ensure modal exists
+        if (!this.modalElement) {
+            this.createModal();
+        }
+
+        // Force show modal with multiple methods
+        if (this.modalElement) {
+            this.modalElement.style.display = 'flex';
+            this.modalElement.style.visibility = 'visible';
+            this.modalElement.style.opacity = '1';
+            this.modalElement.classList.remove('hidden');
+            this.modalElement.setAttribute('style', 'display: flex !important; visibility: visible !important; opacity: 1 !important;');
+
+            console.log('Modal shown:', this.modalElement);
+        }
 
         // Start countdown
         this.startCountdown();
     }
 
     startCountdown() {
-        let remainingSeconds = this.warningDuration / 1000;
+        let remainingSeconds = 30; // Fixed 30 seconds countdown
         const circle = document.getElementById('progressCircle');
         const radius = 72;
         const circumference = 2 * Math.PI * radius;
@@ -195,7 +209,7 @@ class SessionTimeoutModal {
             document.getElementById('countdownTimer').textContent = remainingSeconds;
 
             // Update circle progress
-            const progress = remainingSeconds / (this.warningDuration / 1000);
+            const progress = remainingSeconds / 30;
             const offset = circumference * (1 - progress);
             circle.style.strokeDashoffset = offset;
 
@@ -284,6 +298,13 @@ class SessionTimeoutModal {
     extendSession() {
         this.resetTimeout();
     }
+
+    // Force show modal for testing (bypasses timeout timer)
+    forceShowModal() {
+        console.log('Force showing modal...');
+        this.isModalShown = false; // Reset flag
+        this.showModal();
+    }
 }
 
 // Global instance for easy access
@@ -303,20 +324,39 @@ document.addEventListener('DOMContentLoaded', function () {
             console.log('Attract screen detected - session timeout disabled unless T&C modal is active');
             return;
         }
+    } else {
+        // For all other pages, initialize session timeout immediately
+        console.log('Non-attract screen detected - initializing session timeout immediately');
     }
 
     console.log('Initializing session timeout modal...');
 
     // Initialize with default settings
     sessionTimeoutModal = new SessionTimeoutModal({
-        timeoutDuration: 50000, // 50 seconds total timeout (20s until modal + 30s warning)
+        timeoutDuration: 80000, // 80 seconds total timeout (50s until modal + 30s warning)
         warningDuration: 30000, // 30 seconds warning countdown
     });
 
     // Make it globally accessible for debugging
     window.sessionTimeoutModal = sessionTimeoutModal;
 
+    // Add immediate test function
+    window.testSessionTimeout = function () {
+        console.log('Testing session timeout modal...');
+        if (sessionTimeoutModal) {
+            sessionTimeoutModal.forceShowModal();
+        } else {
+            console.log('Creating new modal for test...');
+            const testModal = new SessionTimeoutModal({
+                timeoutDuration: 5000,
+                warningDuration: 3000
+            });
+            testModal.forceShowModal();
+        }
+    };
+
     console.log('Session timeout modal initialized successfully');
+    console.log('Test with: testSessionTimeout()');
 });
 
 // Function to check if Terms & Conditions modal is active
@@ -331,7 +371,7 @@ function initializeTimeoutOnTermsModal() {
         console.log('T&C modal activated - initializing session timeout');
 
         sessionTimeoutModal = new SessionTimeoutModal({
-            timeoutDuration: 50000, // 50 seconds total timeout (20s until modal + 30s warning)
+            timeoutDuration: 80000, // 80 seconds total timeout (50s until modal + 30s warning)
             warningDuration: 30000, // 30 seconds warning countdown
         });
 
@@ -367,6 +407,12 @@ window.SessionTimeoutModalUtils = {
     trigger: function () {
         if (sessionTimeoutModal) {
             sessionTimeoutModal.triggerModal();
+        }
+    },
+
+    forceShow: function () {
+        if (sessionTimeoutModal) {
+            sessionTimeoutModal.forceShowModal();
         }
     },
 

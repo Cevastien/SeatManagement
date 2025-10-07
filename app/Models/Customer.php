@@ -31,6 +31,9 @@ class Customer extends Model
         'table_id',
         'is_table_requested',
         'special_requests',
+        'assigned_table_id',
+        'table_assigned_at',
+        'estimated_departure',
     ];
 
     protected $casts = [
@@ -42,6 +45,8 @@ class Customer extends Model
         'called_at' => 'datetime',
         'seated_at' => 'datetime',
         'completed_at' => 'datetime',
+        'table_assigned_at' => 'datetime',
+        'estimated_departure' => 'datetime',
     ];
 
     /**
@@ -274,9 +279,8 @@ class Customer extends Model
         // Reassign queue numbers to match current positions
         static::reassignQueueNumbers();
 
-        // Update wait times for remaining customers
-        $estimator = new \App\Services\QueueEstimator();
-        $estimator->updateAllWaitTimes();
+        // Update wait times for remaining customers using SmartQueueEstimator
+        $this->updateAllCustomerWaitTimes();
     }
 
     /**
@@ -398,21 +402,43 @@ class Customer extends Model
     }
 
     /**
-     * Calculate realistic estimated wait time using dynamic queue estimator
+     * Calculate realistic estimated wait time using smart queue estimator
      */
     public static function calculateEstimatedWaitTime(int $partySize, string $priorityType = 'normal'): int
     {
-        $estimator = new \App\Services\QueueEstimator();
-        return $estimator->calculateWaitTime($partySize, $priorityType);
+        // Create a temporary customer instance to calculate wait time
+        $tempCustomer = new static([
+            'party_size' => $partySize,
+            'priority_type' => $priorityType,
+            'status' => 'waiting',
+            'created_at' => now(),
+        ]);
+        
+        $estimator = new \App\Services\SmartQueueEstimator();
+        $result = $estimator->calculateWaitTime($tempCustomer);
+        return $result['wait_minutes'];
     }
 
     /**
-     * Format wait time for user-friendly display using queue estimator
+     * Format wait time for user-friendly display
      */
     public static function formatWaitTime(int $minutes): string
     {
-        $estimator = new \App\Services\QueueEstimator();
-        return $estimator->formatWaitTime($minutes);
+        if ($minutes === 0) {
+            return 'Available now';
+        } elseif ($minutes < 60) {
+            return "{$minutes} minutes";
+        } else {
+            $hours = floor($minutes / 60);
+            $remainingMinutes = $minutes % 60;
+            
+            if ($remainingMinutes === 0) {
+                return $hours === 1 ? '1 hour' : "{$hours} hours";
+            } else {
+                $hourText = $hours === 1 ? '1 hour' : "{$hours} hours";
+                return "{$hourText} {$remainingMinutes} minutes";
+            }
+        }
     }
 
     /**
@@ -427,5 +453,25 @@ class Customer extends Model
         // Calculate on the fly if not set
         $waitTime = self::calculateEstimatedWaitTime($this->party_size, $this->priority_type);
         return self::formatWaitTime($waitTime);
+    }
+    
+    /**
+     * Update wait times for all waiting customers using SmartQueueEstimator
+     */
+    public function updateAllCustomerWaitTimes(): void
+    {
+        try {
+            $waitingCustomers = static::where('status', 'waiting')->get();
+            $smartEstimator = new \App\Services\SmartQueueEstimator();
+            
+            foreach ($waitingCustomers as $customer) {
+                $result = $smartEstimator->calculateWaitTime($customer);
+                $customer->update(['estimated_wait_minutes' => $result['wait_minutes']]);
+            }
+            
+            \Log::info('Updated wait times for ' . $waitingCustomers->count() . ' waiting customers');
+        } catch (\Exception $e) {
+            \Log::error('Failed to update customer wait times: ' . $e->getMessage());
+        }
     }
 }

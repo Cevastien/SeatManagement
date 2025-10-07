@@ -1,323 +1,158 @@
-# 🍽️ Digital Waitlist System for Restaurants
+# Café Gervacio's Self-Service Kiosk System - Front-End Prototype
 
-A comprehensive Laravel-based digital waitlist management system designed for restaurants to efficiently manage customer queues, prioritize special guests, and provide real-time queue updates.
+## Project Overview
 
-## ✨ Features
+This project is a **front-end prototype designed for demonstration purposes** that simulates a complete self-service kiosk system for Café Gervacio's restaurant. It demonstrates the user experience and system flow without requiring a real backend infrastructure. This Laravel-based subsystem focuses on the customer registration and priority verification workflow, creating a seamless demonstration experience for Figma integration.
 
-- **📱 Touch-Friendly Kiosk Interface** - Modern, responsive design for easy customer interaction
-- **🎯 Priority Queue Management** - Special handling for Senior Citizens, PWD, and Pregnant guests
-- **🆔 ID Verification System** - Secure verification workflow for priority guests
-- **📊 Real-Time Queue Updates** - Live queue position and estimated wait time
-- **🍽️ Table Suggestion System** - Smart table recommendations based on availability
-- **📱 SMS Notifications** - Customer notifications when table is ready
-- **👥 Admin Dashboard** - Staff management and queue monitoring
-- **⚙️ Dynamic Settings** - Configurable party size limits and restaurant details
-- **📋 Terms & Conditions** - Legal compliance with consent tracking
-- **🔄 Session Management** - Secure session handling with timeout protection
+## System Architecture
 
-## 🛠️ Technology Stack
+### Core Concept
+This Laravel subsystem creates a **complete wireframe experience** by interconnecting multiple views and components that simulate the full system workflow. All user interactions and data flow are simulated through client-side JavaScript and session management, creating a seamless demonstration experience.
 
-- **Backend:** Laravel 11.x
-- **Frontend:** Blade Templates, Tailwind CSS, Alpine.js
-- **Database:** SQLite (development), MySQL/PostgreSQL (production)
-- **Icons:** Font Awesome 6
-- **Styling:** Custom CSS with modern animations
+### Technology Stack
+- **Framework**: Laravel 12.x (PHP 8.2+) - Used for rapid prototyping and view management
+- **Frontend**: Blade templating with Livewire components for dynamic interactions
+- **Styling**: Tailwind CSS with custom theming
+- **Data Simulation**: Session-based data persistence for demonstration purposes
+- **Interactive Elements**: JavaScript for form validation and user interactions
 
-## 📋 Prerequisites
+### Key Components
 
-Before you begin, ensure you have the following installed:
+#### 1. **Customer Registration Subsystem**
+- **Attract Screen**: Eye-catching welcome interface with priority access indicators
+- **Registration Flow**: Multi-step customer registration process with form validation
+- **Priority Verification**: Simulated staff verification system for senior citizens, PWD, and pregnant guests
+- **Review & Edit Details**: Customer can review and edit their information before final confirmation
+- **Digital Receipt**: Simulated receipt display with queue number and estimated wait time
 
-- **PHP 8.2+** with extensions: BCMath, Ctype, cURL, DOM, Fileinfo, JSON, Mbstring, OpenSSL, PCRE, PDO, Tokenizer, XML
-- **Composer** (PHP dependency manager)
-- **Node.js 18+** and **NPM**
-- **Git**
-- **Web Server** (Apache/Nginx) or **Laravel Valet/Sail**
+#### 2. **Staff Verification Interface**
+- **Verification Screen**: Staff interface for ID verification and priority approval
+- **Status Updates**: Real-time verification status updates across the system
+- **Priority Processing**: Simulated workflow for handling priority customer requests
 
-## 🚀 Installation Guide
+#### 3. **Data Flow Simulation**
+- **Session Management**: Customer data persists across page transitions for demonstration
+- **Form Validation**: Client-side validation provides realistic user experience
+- **Priority Logic**: Simulated priority handling with different customer types
+- **Queue Simulation**: Mock queue numbering system (P001, R001 format) for demonstration
 
-### Step 1: Clone the Repository
+## Technical Implementation
 
-```bash
-git clone https://github.com/Cevastien/SeatManagement.git
-cd SeatManagement
-```
+### Data Flow Simulation
+- **Shared Session Data**: All components use session-based data persistence for demonstration
+- **Form Interconnection**: Multiple views work together to simulate complete system flow
+- **Persistent State**: User data persists across page refreshes and browser sessions for realistic experience
 
-### Step 2: Install PHP Dependencies
+### Key Features
 
-```bash
-composer install
-```
+#### Priority Access Simulation
+- **Special Categories**: Senior Citizens, PWD (Persons with Disabilities), Pregnant guests
+- **Verification Workflow**: Simulated ID verification process with staff approval interface
+- **Queue Priority**: Mock priority queue management with different customer types
+- **Staff Interface**: Demonstration of staff verification and approval process
 
-### Step 3: Install Node.js Dependencies
+#### Queue Management Simulation
+- **Dynamic Numbering**: Simulated queue number generation with priority prefixes (P001, R001)
+- **Wait Time Estimation**: Mock wait time calculations for demonstration purposes
+- **Status Tracking**: Complete simulated customer journey from registration to completion
+- **Interactive Updates**: JavaScript-driven updates to simulate real-time system behavior
 
-```bash
-npm install
-```
+#### User Experience Features
+- **Form Validation**: Client-side validation provides realistic user interaction
+- **Edit Functionality**: Users can edit their details and see changes reflected immediately
+- **Seamless Navigation**: Smooth transitions between different system components
+- **Visual Feedback**: Loading states, success messages, and error handling for realistic UX
 
-### Step 4: Environment Configuration
+## Demo Data Flow
 
-```bash
-# Copy the environment file
-cp .env.example .env
+### Customer Journey Example:
+1. **Registration**: Customer enters name "Juan Dela Cruz" with party of 4
+2. **Priority Check**: Customer indicates senior citizen status
+3. **Verification**: Staff verification process (simulated)
+4. **Queue Assignment**: Receives priority number P042
+5. **Staff Notification**: Dashboard shows new priority customer
+6. **Table Assignment**: Staff assigns Table 5 based on party size
+7. **Completion**: Customer seated, table status updated, analytics recorded
 
-# Generate application key
-php artisan key:generate
-```
+### Staff Workflow:
+1. **Dashboard Monitoring**: Real-time view of all system components
+2. **Manual Entry**: Staff can bypass kiosk and manually enter customers
+3. **Table Management**: Visual interface for table status and assignment
+4. **Queue Processing**: Call next customer and manage seating flow
+5. **Analytics Review**: Monitor performance metrics and business insights
 
-### Step 5: Configure Database
-
-Edit your `.env` file and configure the database:
-
-```env
-# For SQLite (Development - Default)
-DB_CONNECTION=sqlite
-DB_DATABASE=database/database.sqlite
-
-# For MySQL (Production)
-# DB_CONNECTION=mysql
-# DB_HOST=127.0.0.1
-# DB_PORT=3306
-# DB_DATABASE=seatmanagement
-# DB_USERNAME=your_username
-# DB_PASSWORD=your_password
-```
-
-**If using SQLite:** Ensure the database file exists:
-```bash
-touch database/database.sqlite
-```
-
-### Step 6: Run Database Migrations
-
-```bash
-php artisan migrate
-```
-
-### Step 7: Seed the Database
-
-```bash
-php artisan db:seed
-```
-
-This will populate your database with:
-- Default settings (party size limits, restaurant info)
-- Sample staff accounts
-- Test data for development
-
-### Step 8: Build Frontend Assets
-
-```bash
-# Build for development
-npm run dev
-
-# Or build for production
-npm run build
-```
-
-### Step 9: Start the Development Server
-
-```bash
-php artisan serve
-```
-
-Your application will be available at: **http://127.0.0.1:8000**
-
-## 🔧 Configuration
-
-### Default Admin Account
-
-After seeding, you can log in with:
-- **Email:** `admin@restaurant.com`
-- **Password:** `password`
-
-### Key Settings
-
-Configure these in the admin panel or database:
-
-- **Party Size Limits:** Minimum and maximum party size (default: 1-50)
-- **Restaurant Information:** Name, address, phone number
-- **Queue Settings:** Average dining duration, grace period
-- **Table Settings:** Table suggestion time window
-
-## 📱 Usage Guide
-
-### For Customers (Kiosk Mode)
-
-1. **Welcome Screen:** Touch anywhere to start registration
-2. **Registration:** Enter name, party size, contact number
-3. **Priority Selection:** Choose if you're a priority guest (Senior/PWD/Pregnant)
-4. **ID Verification:** If priority, complete verification process
-5. **Queue Position:** Get your queue number and estimated wait time
-6. **Notifications:** Receive SMS when table is ready
-
-### For Staff (Admin Dashboard)
-
-1. **Login:** Use admin credentials to access dashboard
-2. **Queue Management:** View current queue and customer details
-3. **Priority Verification:** Process ID verification requests
-4. **Settings Management:** Configure system parameters
-5. **Analytics:** Monitor queue performance and customer flow
-
-## 🗂️ Project Structure
+## File Structure
 
 ```
 SeatManagement/
-├── app/
-│   ├── Console/Commands/     # Artisan commands
-│   ├── Http/Controllers/     # API and web controllers
-│   ├── Jobs/                 # Background job processing
-│   ├── Livewire/             # Livewire components
-│   ├── Models/               # Eloquent models
-│   ├── Services/             # Business logic services
-│   └── View/Components/      # Blade components
-├── database/
-│   ├── migrations/           # Database schema migrations
-│   └── seeders/             # Database seeders
-├── public/
-│   ├── images/              # Restaurant images and logos
-│   └── js/                  # Frontend JavaScript
 ├── resources/
 │   ├── views/
-│   │   ├── admin/           # Admin dashboard views
-│   │   ├── kiosk/           # Customer kiosk views
-│   │   └── components/      # Reusable Blade components
-│   └── css/                 # Custom stylesheets
-└── routes/
-    ├── api.php              # API routes
-    └── web.php              # Web routes
+│   │   ├── kiosk/                 # Customer-facing interfaces
+│   │   │   ├── attract-screen.blade.php    # Welcome/attract screen
+│   │   │   ├── registration.blade.php      # Customer registration form
+│   │   │   ├── review-details.blade.php    # Review and edit details
+│   │   │   ├── staffverification.blade.php # Staff verification interface
+│   │   │   └── receipt.blade.php           # Digital receipt display
+│   │   └── layouts/               # Page templates and layouts
+│   └── css/                       # Custom styling and themes
+├── app/
+│   ├── Http/Controllers/          # View controllers for demonstration
+│   │   └── RegistrationController.php
+│   └── Models/                    # Data models for simulation
+├── public/                        # Static assets and images
+└── routes/                        # Route definitions for navigation
 ```
 
-## 🔑 Key Routes
+## Integration with Figma
 
-- **Kiosk:** `/` - Customer registration interface
-- **Admin:** `/admin` - Staff dashboard
-- **API:** `/api/*` - REST API endpoints
-- **Settings:** `/admin/settings` - System configuration
+This prototype is specifically designed for **Figma integration** and presentation purposes:
 
-## 🧪 Testing
+- **Complete User Flow**: Demonstrates every step from customer arrival to seating
+- **Interactive Elements**: All buttons, forms, and navigation work as intended
+- **Realistic Data**: Hardcoded examples that represent typical usage scenarios
+- **Visual Fidelity**: High-quality UI that matches professional design standards
 
-Run the test suite:
+## Usage Instructions
 
-```bash
-# Run all tests
-php artisan test
+### For Demonstrations:
+1. **Start with Kiosk**: Open the application in browser to begin customer registration flow
+2. **Monitor Staff View**: Navigate to staff verification interface to see staff perspective
+3. **Complete Journey**: Follow a customer from registration through verification to receipt
+4. **Explore Features**: Test priority verification, edit details, and different customer types
 
-# Run specific test file
-php artisan test tests/Feature/KioskTest.php
-```
+### For Development:
+- **Staff Access**: Use staff verification interface for priority customer approval
+- **Customer Interface**: Use registration flow for customer registration demonstration
+- All views are self-contained and demonstrate the complete user experience
+- Session-based data persistence creates realistic demonstration experience
+- Real-time updates work across different interface components
 
-## 📦 Production Deployment
+## Demo Scenarios
 
-### 1. Environment Setup
+### Scenario 1: Regular Customer
+- Customer registers through kiosk interface
+- Receives regular queue number (R001)
+- Waits in standard queue simulation
+- Gets seated when table becomes available
 
-```bash
-# Set environment to production
-APP_ENV=production
-APP_DEBUG=false
+### Scenario 2: Priority Customer
+- Senior citizen registers through kiosk
+- Triggers priority verification process
+- Receives priority queue number (P001)
+- Gets faster seating based on priority status
 
-# Configure database for production
-DB_CONNECTION=mysql
-DB_HOST=your_production_host
-DB_DATABASE=your_production_db
-DB_USERNAME=your_production_user
-DB_PASSWORD=your_production_password
-```
+### Scenario 3: Staff Verification
+- Staff verifies ID documents for priority customers
+- Approves or rejects priority status
+- Updates customer verification status
+- Allows customer to proceed with priority benefits
 
-### 2. Optimize for Production
+## Technical Specifications
 
-```bash
-# Clear and cache configuration
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
+- **Frontend Framework**: Laravel Blade with Livewire components
+- **Styling**: Tailwind CSS with custom color scheme
+- **Icons**: Font Awesome 6.5.2
+- **Responsive Design**: Optimized for kiosk displays and staff workstations
+- **Session Management**: Persistent data across page transitions for realistic experience
 
-# Build production assets
-npm run build
-
-# Run migrations
-php artisan migrate --force
-```
-
-### 3. Web Server Configuration
-
-Configure your web server to point to the `public` directory:
-
-```apache
-# Apache .htaccess (already included)
-DocumentRoot /path/to/SeatManagement/public
-```
-
-```nginx
-# Nginx configuration
-server {
-    listen 80;
-    server_name your-domain.com;
-    root /path/to/SeatManagement/public;
-    
-    index index.php;
-    
-    location / {
-        try_files $uri $uri/ /index.php?$query_string;
-    }
-    
-    location ~ \.php$ {
-        fastcgi_pass unix:/var/run/php/php8.2-fpm.sock;
-        fastcgi_index index.php;
-        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
-        include fastcgi_params;
-    }
-}
-```
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-1. **Permission Errors:**
-   ```bash
-   chmod -R 755 storage bootstrap/cache
-   ```
-
-2. **Database Connection Issues:**
-   - Verify database credentials in `.env`
-   - Ensure database server is running
-   - Check database exists
-
-3. **Asset Loading Issues:**
-   ```bash
-   npm run build
-   php artisan config:clear
-   ```
-
-4. **Queue Not Updating:**
-   - Check if JavaScript is enabled
-   - Verify API routes are accessible
-   - Check browser console for errors
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/new-feature`
-3. Commit changes: `git commit -am 'Add new feature'`
-4. Push to branch: `git push origin feature/new-feature`
-5. Submit a Pull Request
-
-## 📄 License
-
-This project is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
-
-## 👨‍💻 Author
-
-**Cevastien** - [GitHub Profile](https://github.com/Cevastien)
-
-## 📞 Support
-
-If you encounter any issues or have questions:
-
-1. Check the [Issues](https://github.com/Cevastien/SeatManagement/issues) page
-2. Create a new issue with detailed information
-3. Include error messages and steps to reproduce
-
----
-
-**🎯 Ready to streamline your restaurant's waitlist management? Get started with the installation guide above!**
+This prototype successfully demonstrates a complete restaurant queue management system without requiring any backend infrastructure, making it perfect for client presentations, stakeholder demonstrations, and Figma integration workflows.

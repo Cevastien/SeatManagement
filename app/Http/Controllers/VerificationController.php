@@ -260,5 +260,106 @@ class VerificationController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Reject verification (for staff)
+     */
+    public function rejectVerification(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'verification_id' => 'required|integer|exists:priority_verifications,id',
+            'rejected_by' => 'required|string',
+            'reason' => 'nullable|string|max:500',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $verification = PriorityVerification::find($request->verification_id);
+
+            if (!$verification) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Verification not found'
+                ], 404);
+            }
+
+            if ($verification->status !== 'pending') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Verification has already been processed'
+                ], 400);
+            }
+
+            // Mark as rejected
+            $verification->update([
+                'status' => 'rejected',
+                'verified_at' => now(),
+                'verified_by' => $request->rejected_by,
+                'rejection_reason' => $request->reason ?? 'ID verification failed'
+            ]);
+
+            // Update the customer record if it exists
+            $customer = Customer::where('name', $verification->customer_name)
+                ->where('priority_type', $verification->priority_type)
+                ->where('status', 'waiting')
+                ->latest()
+                ->first();
+
+            if ($customer) {
+                $customer->update([
+                    'id_verification_status' => 'rejected',
+                    'id_verification_data' => [
+                        'rejected_by' => $request->rejected_by,
+                        'rejected_at' => now()->toISOString(),
+                        'reason' => $request->reason ?? 'ID verification failed',
+                        'verification_id' => $verification->id
+                    ]
+                ]);
+
+                Log::info('Customer record updated with rejection', [
+                    'customer_id' => $customer->id,
+                    'verification_id' => $verification->id
+                ]);
+            }
+
+            Log::info('Priority verification rejected', [
+                'verification_id' => $verification->id,
+                'customer_name' => $verification->customer_name,
+                'rejected_by' => $request->rejected_by,
+                'reason' => $request->reason
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Verification rejected successfully',
+                'verification' => [
+                    'id' => $verification->id,
+                    'customer_name' => $verification->customer_name,
+                    'priority_type' => $verification->priority_type,
+                    'status' => 'rejected',
+                    'rejected_at' => $verification->verified_at->toISOString(),
+                    'rejected_by' => $verification->verified_by,
+                    'reason' => $verification->rejection_reason
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to reject verification', [
+                'verification_id' => $request->verification_id,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to reject verification. Please try again.'
+            ], 500);
+        }
+    }
 }
 

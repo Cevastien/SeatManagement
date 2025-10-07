@@ -14,10 +14,35 @@ class QueueEstimator
     const CONCURRENT_CAPACITY = 10;
     
     /**
-     * Calculate dynamic wait time based on actual queue state
+     * Calculate smart wait time based on actual table availability
      */
     public function calculateWaitTime($partySize, $priorityType, $excludeCustomerId = null)
     {
+        // Use smart table-based calculation if SmartQueueEstimator is available
+        if (class_exists('\App\Services\SmartQueueEstimator')) {
+            try {
+                $smartEstimator = new \App\Services\SmartQueueEstimator();
+                
+                // Create a temporary customer instance for calculation
+                $tempCustomer = new Customer([
+                    'party_size' => $partySize,
+                    'priority_type' => $priorityType,
+                    'status' => 'waiting',
+                    'created_at' => now(),
+                ]);
+                
+                if ($excludeCustomerId) {
+                    $tempCustomer->id = $excludeCustomerId;
+                }
+                
+                $result = $smartEstimator->calculateWaitTime($tempCustomer);
+                return $result['wait_minutes'];
+            } catch (\Exception $e) {
+                // Fall back to original logic if smart estimator fails
+            }
+        }
+        
+        // Original logic as fallback
         $customer = $excludeCustomerId ? Customer::find($excludeCustomerId) : null;
         
         // Get all customers waiting who registered BEFORE this customer
