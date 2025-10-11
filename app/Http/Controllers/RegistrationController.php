@@ -25,6 +25,11 @@ class RegistrationController extends Controller
             $existingData = session('registration');
         }
         
+        // Check if coming from verification and has session data
+        if (session('registration') && isset(session('registration')['verification_id'])) {
+            $existingData = session('registration');
+        }
+        
         return view('kiosk.registration', compact('editField', 'existingData'));
     }
 
@@ -33,25 +38,45 @@ class RegistrationController extends Controller
      */
     public function store(Request $request)
     {
-        // Validate the form data
+        // Sanitize and validate input data
+        $sanitizedData = [
+            'name' => strip_tags(trim($request->input('name', ''))),
+            'party_size' => (int) $request->input('party_size', 1),
+            'contact' => preg_replace('/[^0-9]/', '', $request->input('contact', '')),
+            'is_priority' => $request->input('is_priority', '0'),
+            'priority_type' => $request->input('priority_type', 'normal'),
+        ];
+        
+        Log::info('Registration form data received', [
+            'raw_contact' => $request->input('contact'),
+            'sanitized_contact' => $sanitizedData['contact'],
+            'all_sanitized_data' => $sanitizedData,
+            'all_request_data' => $request->all(),
+            'contact_field_exists' => $request->has('contact'),
+            'contact_field_empty' => empty($request->input('contact'))
+        ]);
+
+        // Validate the sanitized form data
         // Get dynamic party size limits from settings
         $partySizeLimits = \App\Models\Setting::getPartySizeLimits();
         
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255|min:2',
+        $validator = Validator::make($sanitizedData, [
+            'name' => 'required|string|max:255|min:2|regex:/^[a-zA-Z\s\-\.\']+$/',
             'party_size' => "required|integer|min:{$partySizeLimits['min']}|max:{$partySizeLimits['max']}",
-            'contact' => 'nullable|string|regex:/^[0-9]{1,11}$/',
+            'contact' => 'nullable|string|regex:/^[0-9]{9}$/',
             'is_priority' => 'required|in:0,1',
-            'priority_type' => 'required_if:is_priority,1|nullable|in:senior,pwd,pregnant',
+            'priority_type' => 'required|in:senior,pwd,pregnant,normal',
         ], [
             'name.required' => 'Please enter your name.',
             'name.min' => 'Name must be at least 2 characters.',
+            'name.regex' => 'Name can only contain letters, spaces, hyphens, periods, and apostrophes.',
             'party_size.required' => 'Please specify party size.',
             'party_size.min' => "Party size must be at least {$partySizeLimits['min']}.",
             'party_size.max' => "Party size cannot exceed {$partySizeLimits['max']} people.",
             'contact.regex' => 'Please enter only numbers for the mobile number.',
             'is_priority.required' => 'Please answer the priority check question.',
-            'priority_type.required_if' => 'Please select a priority type.',
+            'priority_type.required' => 'Please select a priority type.',
+            'priority_type.in' => 'Invalid priority type selected.',
         ]);
 
         if ($validator->fails()) {
@@ -62,8 +87,8 @@ class RegistrationController extends Controller
         }
 
         // STRICT: Additional duplicate contact check during registration (today only)
-        if ($request->contact) {
-            $formattedContact = str_starts_with($request->contact, '09') ? $request->contact : '09' . $request->contact;
+        if ($sanitizedData['contact']) {
+            $formattedContact = str_starts_with($sanitizedData['contact'], '09') ? $sanitizedData['contact'] : '09' . $sanitizedData['contact'];
             $existingCustomer = Customer::where('contact_number', $formattedContact)
                 ->where('status', 'waiting')
                 ->whereDate('registered_at', today()) // Only check today's customers
@@ -82,37 +107,47 @@ class RegistrationController extends Controller
         try {
             // Determine priority type first
             $priorityType = 'normal';
-            if ($request->is_priority == '1' && $request->priority_type) {
-                $priorityType = $request->priority_type;
+            if ($sanitizedData['is_priority'] == '1' && $sanitizedData['priority_type']) {
+                $priorityType = $sanitizedData['priority_type'];
             }
             
             // Determine if it's a group
-            $isGroup = $request->party_size > 1;
-            $hasPriorityMember = $request->is_priority == '1';
+            $isGroup = $sanitizedData['party_size'] > 1;
+            $hasPriorityMember = $sanitizedData['is_priority'] == '1';
             
             // Format contact number
-            $contactNumber = $request->contact ? 
-                (str_starts_with($request->contact, '09') ? $request->contact : '09' . $request->contact) : null;
+            $contactNumber = $sanitizedData['contact'] ? 
+                (str_starts_with($sanitizedData['contact'], '09') ? $sanitizedData['contact'] : '09' . $sanitizedData['contact']) : null;
+                
+            Log::info('Contact number formatting', [
+                'original_contact' => $sanitizedData['contact'],
+                'formatted_contact' => $contactNumber,
+                'will_be_encrypted' => $contactNumber ? 'yes' : 'no'
+            ]);
             
-            // Store data in session only (no database save yet)
+            // Encrypt sensitive data before storing in session
             $registrationData = [
-                'name' => trim($request->name),
-                'party_size' => $request->party_size,
-                'contact_number' => $contactNumber,
+                'name' => encrypt($sanitizedData['name']), // Encrypt sensitive data
+                'party_size' => $sanitizedData['party_size'],
+                'contact_number' => $contactNumber ? encrypt($contactNumber) : null, // Encrypt contact
                 'priority_type' => $priorityType,
                 'is_group' => $isGroup,
                 'has_priority_member' => $hasPriorityMember,
-                'is_priority' => $request->is_priority,
-                'priority_type_selected' => $request->priority_type,
+                'is_priority' => $sanitizedData['is_priority'],
+                'priority_type_selected' => $sanitizedData['priority_type'],
                 'timestamp' => now()->toISOString(),
                 'status' => 'pending_confirmation', // Not saved to database yet
+                'session_id' => session()->getId(), // Track session for security
             ];
             
-            // Store in session
+            // Regenerate session ID for security
+            session()->regenerate();
+            
+            // Store encrypted data in session
             session(['registration' => $registrationData]);
             
             // Generate a dynamic queue number for display (using the proper method)
-            $nextQueueNumber = Customer::getNextQueueNumber();
+            $nextQueueNumber = Customer::getNextQueueNumber($priorityType);
             $tempQueueNumber = str_pad($nextQueueNumber, 3, '0', STR_PAD_LEFT);
             $registrationData['temp_queue_number'] = $tempQueueNumber;
             session(['registration' => $registrationData]);
@@ -146,7 +181,7 @@ class RegistrationController extends Controller
                     $redirectUrl = route('kiosk.review-details');
                 } else {
                     // Senior/PWD customers need ID verification
-                    $redirectUrl = route('kiosk.staffverification') . '?name=' . urlencode($request->name) . '&priority_type=' . $priorityType;
+                    $redirectUrl = route('kiosk.staffverification') . '?name=' . urlencode($request->name) . '&priority_type=' . $priorityType . '&party_size=' . $sanitizedData['party_size'];
                 }
                 $isPriority = true;
             } else {
@@ -206,6 +241,33 @@ class RegistrationController extends Controller
                 ], 400);
             }
             
+            // Check if customer already exists in database (from verification)
+            $existingCustomer = null;
+            if (isset($registrationData['customer_id']) && $registrationData['customer_id']) {
+                $existingCustomer = Customer::find($registrationData['customer_id']);
+            }
+            
+            // If customer exists and has priority (verified), just redirect to receipt
+            if ($existingCustomer && $existingCustomer->has_priority_member && $existingCustomer->status === 'waiting') {
+                Log::info('Verified customer already exists, redirecting to receipt', [
+                    'customer_id' => $existingCustomer->id,
+                    'queue_number' => $existingCustomer->queue_number
+                ]);
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Registration already confirmed!',
+                    'data' => [
+                        'customer_id' => $existingCustomer->id,
+                        'queue_number' => $existingCustomer->queue_number,
+                        'estimated_wait_time' => $existingCustomer->estimated_wait_minutes,
+                        'formatted_wait_time' => (new QueueEstimator())->formatWaitTime($existingCustomer->estimated_wait_minutes),
+                        'priority_type' => $existingCustomer->priority_type,
+                    ],
+                    'redirect_to' => route('kiosk.receipt', $existingCustomer->id)
+                ]);
+            }
+            
             // Check if already confirmed
             if ($registrationData['status'] === 'confirmed') {
                 Log::info('Registration already confirmed, redirecting to receipt', [
@@ -239,22 +301,58 @@ class RegistrationController extends Controller
 
             DB::beginTransaction();
 
-            // Generate final queue number
-            $queueNumber = Customer::getNextQueueNumber();
-            
-            // Create customer record in database
-            $customer = Customer::create([
-                'name' => $registrationData['name'],
-                'party_size' => $registrationData['party_size'],
-                'contact_number' => $registrationData['contact_number'],
-                'queue_number' => $queueNumber,
-                'priority_type' => $registrationData['priority_type'],
-                'is_group' => $registrationData['is_group'],
-                'has_priority_member' => $registrationData['has_priority_member'],
-                'status' => 'waiting',
-                'estimated_wait_minutes' => $registrationData['estimated_wait_minutes'],
-                'registered_at' => now(),
-            ]);
+            // Check if customer already exists (from verification)
+            if ($existingCustomer) {
+                // Update existing customer with any new data from session
+                $decryptedContact = $registrationData['contact_number'] ? decrypt($registrationData['contact_number']) : null;
+                
+                $existingCustomer->update([
+                    'party_size' => $registrationData['party_size'],
+                    'contact_number' => $decryptedContact,
+                    'status' => 'waiting', // Keep as waiting status
+                    'last_updated_at' => now(),
+                ]);
+                
+                $customer = $existingCustomer;
+                
+                Log::info('Updated existing verified customer', [
+                    'customer_id' => $customer->id,
+                    'queue_number' => $customer->queue_number,
+                    'status' => $customer->status
+                ]);
+            } else {
+                // Create new customer record using the reserved queue number
+                $queueNumber = $registrationData['reserved_queue_number'] ?? Customer::getNextQueueNumber($registrationData['priority_type'] ?? 'normal');
+                
+                Log::info('Using reserved queue number for customer creation', [
+                    'reserved_queue_number' => $registrationData['reserved_queue_number'] ?? 'none',
+                    'final_queue_number' => $queueNumber,
+                    'priority_type' => $registrationData['priority_type']
+                ]);
+                
+                // Decrypt sensitive data from session
+                $decryptedName = decrypt($registrationData['name']);
+                $decryptedContact = $registrationData['contact_number'] ? decrypt($registrationData['contact_number']) : null;
+                
+                $customer = Customer::create([
+                    'name' => $decryptedName,
+                    'party_size' => $registrationData['party_size'],
+                    'contact_number' => $decryptedContact,
+                    'queue_number' => $queueNumber,
+                    'priority_type' => $registrationData['priority_type'],
+                    'is_group' => $registrationData['is_group'],
+                    'has_priority_member' => $registrationData['has_priority_member'],
+                    'status' => 'waiting',
+                    'estimated_wait_minutes' => $registrationData['estimated_wait_minutes'],
+                    'registered_at' => now(),
+                    'last_updated_at' => now(),
+                ]);
+                
+                Log::info('Created new customer', [
+                    'customer_id' => $customer->id,
+                    'queue_number' => $customer->queue_number
+                ]);
+            }
             
             Log::info('Customer created successfully', [
                 'customer_id' => $customer->id,
@@ -278,9 +376,12 @@ class RegistrationController extends Controller
             // Update with correct wait time
             $customer->update(['estimated_wait_minutes' => $actualWaitTime]);
 
+            // Mark registration as confirmed
+            $customer->markRegistrationConfirmed();
+
             // Create initial queue event
             QueueEvent::create([
-                'customer_id' => $customer->id,
+                'queue_customer_id' => $customer->id,
                 'event_type' => 'registered',
                 'event_time' => now(),
                 'notes' => 'Customer registered via kiosk',
@@ -289,17 +390,44 @@ class RegistrationController extends Controller
             // Handle priority verification if needed
             if ($registrationData['has_priority_member'] && $registrationData['priority_type'] !== 'normal') {
                 if ($registrationData['priority_type'] === 'pregnant') {
-                    // Create verification request for pregnant customers
-                    \App\Models\PriorityVerification::create([
-                        'customer_name' => $registrationData['name'],
-                        'priority_type' => $registrationData['priority_type'],
-                        'status' => 'pending',
-                        'requested_at' => now(),
-                    ]);
+                    // Check if verification already exists and is verified
+                    $existingVerification = \App\Models\PriorityVerification::where('customer_name', $registrationData['name'])
+                        ->where('priority_type', $registrationData['priority_type'])
+                        ->where('status', 'verified')
+                        ->latest()
+                        ->first();
+                    
+                    if (!$existingVerification) {
+                        // Only create verification request if none exists
+                        \App\Models\PriorityVerification::create([
+                            'queue_customer_id' => $customer->id,
+                            'customer_name' => $registrationData['name'],
+                            'priority_type' => $registrationData['priority_type'],
+                            'status' => 'pending',
+                            'requested_at' => now(),
+                        ]);
+                    } else {
+                        // Link existing verification to new customer
+                        $existingVerification->update(['queue_customer_id' => $customer->id]);
+                    }
                 }
+                
+                // Mark priority as applied
+                $customer->markPriorityApplied($registrationData['priority_type'], $registrationData['has_priority_member']);
             }
 
             DB::commit();
+
+            // Check if customer has verified priority verification
+            $isVerified = false;
+            if ($customer->priority_type !== 'normal') {
+                $verification = \App\Models\PriorityVerification::where('customer_name', $customer->name)
+                    ->where('priority_type', $customer->priority_type)
+                    ->where('status', 'verified')
+                    ->latest()
+                    ->first();
+                $isVerified = $verification ? true : false;
+            }
 
             // Update session with final customer data
             session([
@@ -313,7 +441,8 @@ class RegistrationController extends Controller
                     'is_priority' => $customer->has_priority_member,
                     'estimated_wait_time' => $actualWaitTime,
                     'status' => 'confirmed', // Mark as confirmed
-                    'id_verified' => false,
+                    'id_verified' => $isVerified,
+                    'id_verification_status' => $isVerified ? 'verified' : 'pending',
                 ]
             ]);
 
@@ -384,34 +513,234 @@ class RegistrationController extends Controller
     /**
      * Show review details page (Step 2 of kiosk process)
      */
-    public function reviewDetails()
+    public function reviewDetails(Request $request)
     {
-        // Check if registration data exists in session
-        if (!session('registration')) {
-            return redirect()->route('kiosk.registration')->with('error', 'No registration data found. Please start over.');
+        // Check if coming from rejected verification (skip_priority=1)
+        if ($request->has('skip_priority') && $request->get('skip_priority') == '1') {
+            // Customer skipped priority verification - treat as regular customer
+            if (!session('registration')) {
+                return redirect()->route('kiosk.registration')->with('error', 'No registration data found. Please start over.');
+            }
+            
+            $registrationData = session('registration');
+            
+            // Update the registration data to reflect that priority was skipped
+            $registrationData['priority_type'] = 'normal';
+            $registrationData['has_priority_member'] = false;
+            $registrationData['is_group'] = ($registrationData['party_size'] ?? 1) > 1;
+            $registrationData['status'] = 'pending_confirmation';
+            
+            session(['registration' => $registrationData]);
+            
+            // Mark any pending verification as rejected
+            $customerName = $registrationData['name'] ? decrypt($registrationData['name']) : null;
+            if ($customerName) {
+                $pendingVerification = \App\Models\PriorityVerification::where('customer_name', $customerName)
+                    ->where('status', 'pending')
+                    ->latest()
+                    ->first();
+                    
+                if ($pendingVerification) {
+                    $pendingVerification->update([
+                        'status' => 'rejected',
+                        'rejected_at' => now(),
+                        'rejected_by' => 'customer_skipped',
+                        'rejection_reason' => 'Customer chose to skip priority verification'
+                    ]);
+                    
+                    Log::info('Marked pending verification as rejected due to customer skipping', [
+                        'verification_id' => $pendingVerification->id,
+                        'customer_name' => $customerName,
+                        'priority_type' => $pendingVerification->priority_type
+                    ]);
+                }
+            }
+            
+            Log::info('Customer skipped priority verification', [
+                'customer_name' => $customerName,
+                'party_size' => $registrationData['party_size'] ?? 1,
+                'priority_type' => 'normal'
+            ]);
+            
+            // Continue with normal flow
+            $existingCustomer = null;
+            if (isset($registrationData['customer_id']) && $registrationData['customer_id']) {
+                $existingCustomer = Customer::find($registrationData['customer_id']);
+                
+                // Update existing customer record to reflect normal priority
+                if ($existingCustomer && $existingCustomer->priority_type !== 'normal') {
+                    $existingCustomer->update([
+                        'priority_type' => 'normal',
+                        'has_priority_member' => false,
+                        'is_group' => ($registrationData['party_size'] ?? 1) > 1,
+                        'last_updated_at' => now(),
+                    ]);
+                    
+                    Log::info('Updated existing customer to normal priority after skipping verification', [
+                        'customer_id' => $existingCustomer->id,
+                        'customer_name' => $existingCustomer->name,
+                        'old_priority_type' => $registrationData['priority_type'] ?? 'unknown',
+                        'new_priority_type' => 'normal'
+                    ]);
+                }
+            }
         }
+        // Check if coming from verification with URL parameters
+        elseif ($request->has('name') && $request->has('priority_type') && $request->has('verified')) {
+            $customerName = $request->get('name');
+            $priorityType = $request->get('priority_type');
+            $partySize = $request->get('party_size', 1);
+            
+            // Find the verified customer by checking the verifications table
+            $verification = \App\Models\PriorityVerification::where('customer_name', $customerName)
+                ->where('priority_type', $priorityType)
+                ->where('status', 'verified')
+                ->latest()
+                ->first();
+            
+            if ($verification) {
+                // Find the customer record (may or may not exist yet)
+                $customer = Customer::where('name', $customerName)
+                    ->where('priority_type', $priorityType)
+                    ->latest()
+                    ->first();
+            } else {
+                $customer = null;
+            }
+            
+            if ($verification) {
+                if ($customer) {
+                    // Customer exists in database - use real data
+                    $existingCustomer = $customer;
+                    
+                    // Update party size if it's different from URL parameter
+                    if ($customer->party_size != $partySize) {
+                        $customer->update([
+                            'party_size' => $partySize,
+                            'is_group' => $partySize > 1,
+                            'last_updated_at' => now(),
+                        ]);
+                        
+                        Log::info('Updated customer party size from URL parameter', [
+                            'customer_id' => $customer->id,
+                            'old_party_size' => $customer->party_size,
+                            'new_party_size' => $partySize
+                        ]);
+                    }
+                    
+                    Log::info('Found verified customer in database', [
+                        'customer_id' => $customer->id,
+                        'customer_name' => $customer->name,
+                        'queue_number' => $customer->queue_number,
+                        'verification_id' => $verification->id,
+                        'party_size' => $customer->party_size
+                    ]);
+                } else {
+                    // Verification exists but customer record doesn't - create it now
+                    // Check if there's contact number in session data
+                    $contactNumber = null;
+                    $sessionData = session('registration');
+                    if ($sessionData && isset($sessionData['contact_number']) && $sessionData['contact_number']) {
+                        try {
+                            $contactNumber = decrypt($sessionData['contact_number']);
+                        } catch (Exception $e) {
+                            Log::warning('Failed to decrypt contact number from session', [
+                                'error' => $e->getMessage(),
+                                'customer_name' => $customerName
+                            ]);
+                        }
+                    }
+                    
+                    $customer = Customer::create([
+                        'name' => $customerName,
+                        'party_size' => $partySize,
+                        'contact_number' => $contactNumber,
+                        'queue_number' => Customer::getNextQueueNumber($priorityType),
+                        'priority_type' => $priorityType,
+                        'is_group' => $partySize > 1,
+                        'has_priority_member' => true,
+                        'status' => 'waiting',
+                        'estimated_wait_minutes' => 20,
+                        'registered_at' => now(),
+                        'priority_applied_at' => now(),
+                        'last_updated_at' => now(),
+                    ]);
+                    
+                    $existingCustomer = $customer;
+                    
+                    Log::info('Created customer record from verified verification', [
+                        'customer_id' => $customer->id,
+                        'customer_name' => $customer->name,
+                        'queue_number' => $customer->queue_number,
+                        'verification_id' => $verification->id,
+                        'priority_type' => $priorityType,
+                        'contact_number' => $contactNumber ? 'provided' : 'not_provided'
+                    ]);
+                }
+            } else {
+                return redirect()->route('kiosk.registration')->with('error', 'Verification not found or not completed. Please start over.');
+            }
+        } else {
+            // Check if registration data exists in session (for non-verified customers)
+            if (!session('registration')) {
+                return redirect()->route('kiosk.registration')->with('error', 'No registration data found. Please start over.');
+            }
 
-        $registrationData = session('registration');
-        
-        // Check if customer already exists in database (created during verification)
-        $existingCustomer = null;
-        if (isset($registrationData['customer_id']) && $registrationData['customer_id']) {
-            $existingCustomer = Customer::find($registrationData['customer_id']);
+            $registrationData = session('registration');
+            
+            // Check if customer already exists in database (created during verification)
+            $existingCustomer = null;
+            if (isset($registrationData['customer_id']) && $registrationData['customer_id']) {
+                $existingCustomer = Customer::find($registrationData['customer_id']);
+            }
         }
         
         if ($existingCustomer) {
             // Customer exists in database - use real data
             $customer = $existingCustomer;
             
-            // Sync session with database values
-            $registrationData['id_verified'] = $customer->id_verification_status === 'verified';
-            $registrationData['id_verification_status'] = $customer->id_verification_status ?? 'pending';
-            $registrationData['priority_type'] = $customer->priority_type;
-            $registrationData['status'] = 'pending_confirmation'; // Still needs final confirmation
-            session(['registration' => $registrationData]);
+            // Format contact number with 09 prefix if needed
+            if ($customer->contact_number) {
+                $customer->contact_number = str_starts_with($customer->contact_number, '09') ? 
+                    $customer->contact_number : '09' . $customer->contact_number;
+            }
+            
+            Log::info('Existing customer contact number processing', [
+                'customer_id' => $customer->id,
+                'contact_number_raw' => $customer->contact_number,
+                'contact_number_formatted' => $customer->contact_number
+            ]);
+            
+            // Create session data for verified customer (if not already exists)
+            if (!session('registration')) {
+                $registrationData = [
+                    'customer_id' => $customer->id,
+                    'name' => encrypt($customer->name),
+                    'party_size' => $customer->party_size ?? 1, // Default to 1 if null
+                    'contact_number' => $customer->contact_number ? encrypt($customer->contact_number) : null,
+                    'priority_type' => $customer->priority_type,
+                    'has_priority_member' => $customer->has_priority_member,
+                    'is_group' => $customer->is_group,
+                    'id_verified' => $customer->id_verification_status === 'verified',
+                    'id_verification_status' => $customer->id_verification_status ?? 'pending',
+                    'status' => 'pending_confirmation',
+                    'estimated_wait_minutes' => $customer->estimated_wait_minutes,
+                ];
+                session(['registration' => $registrationData]);
+            } else {
+                // Update existing session data with database values
+                $registrationData = session('registration');
+                $registrationData['customer_id'] = $customer->id;
+                $registrationData['id_verified'] = $customer->id_verification_status === 'verified';
+                $registrationData['id_verification_status'] = $customer->id_verification_status ?? 'pending';
+                $registrationData['priority_type'] = $customer->priority_type;
+                $registrationData['status'] = 'pending_confirmation';
+                session(['registration' => $registrationData]);
+            }
             
             Log::info('Review Details - Using existing customer from database', [
                 'customer_id' => $customer->id,
+                'queue_number' => $customer->queue_number,
                 'id_verified' => $customer->id_verification_status === 'verified',
                 'priority_type' => $customer->priority_type
             ]);
@@ -421,24 +750,87 @@ class RegistrationController extends Controller
                 return redirect()->route('kiosk.registration')->with('error', 'Invalid registration state. Please start over.');
             }
             
-            $customer = (object) [
-                'id' => null,
-                'name' => $registrationData['name'],
-                'party_size' => $registrationData['party_size'],
-                'contact_number' => $registrationData['contact_number'],
-                'queue_number' => $registrationData['temp_queue_number'] ?? '001',
-                'priority_type' => $registrationData['priority_type'],
-                'has_priority_member' => $registrationData['has_priority_member'],
-                'estimated_wait_minutes' => $registrationData['estimated_wait_minutes'],
-                'id_verified' => $registrationData['id_verified'] ?? false,
-                'id_verification_status' => $registrationData['id_verification_status'] ?? 'pending',
-            ];
+            // Decrypt sensitive data from session for display
+            $decryptedName = decrypt($registrationData['name']);
+            $decryptedContact = '';
+            
+            // Safely decrypt contact number if it exists and is not null
+            if (!empty($registrationData['contact_number']) && $registrationData['contact_number'] !== null) {
+                try {
+                    $decryptedContact = decrypt($registrationData['contact_number']);
+                } catch (\Exception $e) {
+                    Log::warning('Failed to decrypt contact number', [
+                        'error' => $e->getMessage(),
+                        'contact_encrypted' => $registrationData['contact_number']
+                    ]);
+                    $decryptedContact = '';
+                }
+            }
+            
+            // Check if coming from verification and missing required data
+            // For verified customers, contact number is optional
+            if (isset($registrationData['verification_id']) && !isset($registrationData['party_size'])) {
+                // Redirect to registration to complete missing information
+                return redirect()->route('kiosk.registration')->with('message', 'Please complete your registration information to continue.');
+            }
+            
+            // Format contact number with 09 prefix if needed
+            $formattedContact = $decryptedContact ? 
+                (str_starts_with($decryptedContact, '09') ? $decryptedContact : '09' . $decryptedContact) : null;
+            
+            Log::info('Contact number processing in reviewDetails', [
+                'has_contact_in_session' => !empty($registrationData['contact_number']),
+                'contact_encrypted' => $registrationData['contact_number'],
+                'contact_decrypted' => $decryptedContact,
+                'contact_formatted' => $formattedContact
+            ]);
+            
+            // If customer exists in database, use that customer directly
+            if ($existingCustomer) {
+                $customer = $existingCustomer;
+                
+                // Update contact number if different
+                if ($formattedContact && $customer->contact_number !== $formattedContact) {
+                    $customer->contact_number = $formattedContact;
+                    $customer->save();
+                }
+            } else {
+                // Customer doesn't exist yet - RESERVE the queue number to prevent timing issues
+                $nextQueueNumber = Customer::getNextQueueNumber($registrationData['priority_type']);
+                
+                // Store the reserved queue number in session to use during confirmation
+                $registrationData['reserved_queue_number'] = $nextQueueNumber;
+                session(['registration' => $registrationData]);
+                
+                Log::info('Reserved queue number for review-details', [
+                    'reserved_queue_number' => $nextQueueNumber,
+                    'priority_type' => $registrationData['priority_type'],
+                    'customer_name' => $decryptedName
+                ]);
+                
+                $customer = (object) [
+                    'id' => null,
+                    'name' => $decryptedName,
+                    'party_size' => $registrationData['party_size'],
+                    'contact_number' => $formattedContact,
+                    'queue_number' => $nextQueueNumber, // Use reserved queue number
+                    'priority_type' => $registrationData['priority_type'],
+                    'has_priority_member' => $registrationData['has_priority_member'],
+                    'estimated_wait_minutes' => $registrationData['estimated_wait_minutes'],
+                    'id_verified' => $registrationData['id_verified'] ?? false,
+                    'id_verification_status' => $registrationData['id_verification_status'] ?? 'pending',
+                ];
+            }
         }
         
         // Check if user skipped priority and update session data
         if (request()->get('skip_priority') && $customer->priority_type !== 'normal') {
             // Update session data to regular status
             $registrationData['priority_type'] = 'normal';
+            
+            // Recalculate queue number for normal priority
+            $customer->queue_number = Customer::getNextQueueNumber('normal');
+            $customer->priority_type = 'normal';
             $registrationData['has_priority_member'] = false;
             $registrationData['is_priority'] = '0';
             $registrationData['id_verified'] = false;
@@ -454,6 +846,20 @@ class RegistrationController extends Controller
             $registrationData['id_verified'] = true;
             $registrationData['id_verification_status'] = 'verified';
             session(['registration' => $registrationData]);
+            
+            // Update customer record in database if it exists
+            if (isset($customer->id) && $customer->id) {
+                $customer->update([
+                    'id_verification_status' => 'verified',
+                    'last_updated_at' => now(),
+                ]);
+                
+                Log::info('Updated pregnant customer verification status in database', [
+                    'customer_id' => $customer->id,
+                    'customer_name' => $customer->name,
+                    'verification_status' => 'verified'
+                ]);
+            }
             
             if (is_object($customer) && !($customer instanceof Customer)) {
                 $customer->id_verified = true;
@@ -473,10 +879,15 @@ class RegistrationController extends Controller
         
         Log::info('Review Details - Final customer status', [
             'has_customer_id' => isset($customer->id) && $customer->id,
+            'customer_id' => $customer->id ?? 'null',
+            'customer_name' => $customer->name ?? 'null',
+            'queue_number' => $customer->queue_number ?? 'null',
+            'priority_type' => $customer->priority_type ?? 'null',
             'id_verified' => $customer->id_verified ?? ($customer->id_verification_status === 'verified'),
             'id_verification_status' => $customer->id_verification_status ?? 'unknown',
-            'priority_type' => $customer->priority_type
         ]);
+        
+        // Queue number is already set from database - no need to override
         
         return view('kiosk.review-details', [
             'customer' => $customer,
@@ -562,7 +973,7 @@ class RegistrationController extends Controller
             ]);
 
             $validator = Validator::make($request->all(), [
-                'contact' => 'required|string|regex:/^[0-9]{1,11}$/'
+                'contact' => 'required|string|regex:/^[0-9]{9}$/'
             ]);
 
             if ($validator->fails()) {
@@ -697,6 +1108,41 @@ class RegistrationController extends Controller
     public function updateReviewDetails(Request $request)
     {
         try {
+            // Handle JSON requests (for contact number updates)
+            if ($request->isJson()) {
+                $customerId = $request->json('customer_id');
+                $contactNumber = $request->json('contact_number');
+                
+                if (!$customerId || !$contactNumber) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Customer ID and contact number are required'
+                    ], 400);
+                }
+                
+                $customer = Customer::findOrFail($customerId);
+                
+                // Format contact number (add 09 prefix if missing)
+                $formattedContact = str_starts_with($contactNumber, '09') ? $contactNumber : '09' . $contactNumber;
+                
+                $customer->update([
+                    'contact_number' => $formattedContact,
+                    'last_updated_at' => now(),
+                ]);
+                
+                Log::info('Contact number updated via review details', [
+                    'customer_id' => $customer->id,
+                    'customer_name' => $customer->name,
+                    'contact_number' => $formattedContact
+                ]);
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Contact number updated successfully'
+                ]);
+            }
+            
+            // Handle form requests (legacy support)
             $field = $request->input('field');
             $value = $request->input('value');
             
@@ -831,8 +1277,8 @@ class RegistrationController extends Controller
                 }
             }
             
-            // Also check PriorityVerification table for session-only customers
-            if ($priorityType !== 'normal' && $priorityType !== 'pregnant') {
+            // Also check PriorityVerification table for all priority customers
+            if ($priorityType !== 'normal') {
                 $verification = \App\Models\PriorityVerification::where('customer_name', $customerName)
                     ->where('priority_type', $priorityType)
                     ->where('status', 'verified')

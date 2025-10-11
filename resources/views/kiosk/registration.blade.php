@@ -101,12 +101,13 @@
     <div class="flex-1 flex items-center justify-center px-8 py-8" style="overflow-y: auto;">
         <div class="w-full max-w-3xl">
             <form id="registrationForm" class="space-y-8">
+                @csrf
                 <!-- Name/Nickname -->
                 <div>
                     <h3 class="text-2xl font-bold text-secondary mb-4">Name/Nickname <span class="text-red-500">*</span>
                     </h3>
                     <input type="text" id="name" name="name" placeholder="Enter your name"
-                           value="{{ $editField && $existingData ? ($existingData['name'] ?? '') : '' }}"
+                           value="{{ $editField && $existingData ? (is_string($existingData['name'] ?? '') && str_starts_with($existingData['name'], 'eyJ') ? decrypt($existingData['name']) : ($existingData['name'] ?? '')) : '' }}"
                         class="w-full px-6 py-5 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none text-xl bg-white"
                         oninput="handleNameInput()" required>
                     <p class="text-base text-gray-600 mt-3">Enter your name (or representative's name for priority
@@ -155,25 +156,20 @@
                 <!-- Priority Check (Placeholder Space) -->
                 <div id="prioritySection" class="priority-section hide">
                     <div>
-                        <h3 class="text-2xl font-bold text-secondary mb-4">Priority Check Question <span
-                                class="text-red-500">*</span></h3>
-                        <p class="text-base text-gray-600 mb-4">
-                            Does your party include a Senior, PWD, or Pregnant Guest?
-                        </p>
+                        <h3 class="text-2xl font-bold text-secondary mb-4">Priority Check Question <span class="text-red-500">*</span></h3>
+                        <p class="text-base text-gray-600 mb-4">Does your party include a Senior, PWD, or Pregnant Guest?</p>
                         <div class="grid grid-cols-2 gap-4">
                             <label>
                                 <input type="radio" name="is_priority" value="1" class="sr-only peer" onchange="showPriorityModal()"
                                        {{ $editField && $existingData && ($existingData['is_priority'] ?? '0') == '1' ? 'checked' : '' }}>
-                                <div
-                                    class="w-full bg-white hover:bg-gray-50 border-2 border-gray-200 rounded-xl p-5 transition cursor-pointer text-center">
+                                <div class="w-full bg-white hover:bg-gray-50 border-2 border-gray-200 rounded-xl p-5 transition cursor-pointer text-center">
                                     <p class="font-bold text-lg">Yes</p>
                                 </div>
                             </label>
                             <label>
                                 <input type="radio" name="is_priority" value="0" class="sr-only peer" onchange="handlePriorityChange()"
                                        {{ $editField && $existingData && ($existingData['is_priority'] ?? '0') == '0' ? 'checked' : '' }}>
-                                <div
-                                    class="w-full bg-white hover:bg-gray-50 border-2 border-gray-200 rounded-xl p-5 transition cursor-pointer text-center">
+                                <div class="w-full bg-white hover:bg-gray-50 border-2 border-gray-200 rounded-xl p-5 transition cursor-pointer text-center">
                                     <p class="font-bold text-lg">No</p>
                                 </div>
                             </label>
@@ -218,7 +214,10 @@
                             <i class="fas fa-user text-2xl text-gray-700"></i>
                             <h3 class="font-bold text-lg text-gray-900">Senior Citizens (60+)</h3>
                         </div>
-                        <p class="text-sm text-gray-600">A valid ID is preferred. If unavailable, please approach our staff for assistance.</p>
+                        <p class="text-sm text-gray-600">
+                            <strong>ID Required:</strong> Senior Citizen ID, OSCA ID, or valid government ID showing birthdate.<br>
+                            <strong>Staff Verification:</strong> Our staff will verify your age (60+) in person.
+                        </p>
                     </div>
                 </label>
 
@@ -231,7 +230,10 @@
                             <i class="fas fa-wheelchair text-2xl text-gray-700"></i>
                             <h3 class="font-bold text-lg text-gray-900">Persons with Disabilities (PWD)</h3>
                         </div>
-                        <p class="text-sm text-gray-600">A valid ID is preferred. If unavailable, please approach our staff for assistance.</p>
+                        <p class="text-sm text-gray-600">
+                            <strong>ID Required:</strong> PWD ID card issued by your local government.<br>
+                            <strong>Staff Verification:</strong> Our staff will verify your ID in person.
+                        </p>
                     </div>
                 </label>
 
@@ -241,10 +243,12 @@
                            {{ $editField && $existingData && ($existingData['priority_type'] ?? '') == 'pregnant' ? 'checked' : '' }}>
                     <div class="flex-1">
                         <div class="flex items-center space-x-3 mb-2">
-                            <i class="fas fa-user-plus text-2xl text-gray-700"></i>
+                            <i class="fas fa-baby text-2xl text-gray-700"></i>
                             <h3 class="font-bold text-lg text-gray-900">Pregnant Guests</h3>
                         </div>
-                        <p class="text-sm text-gray-600">No ID required; kindly inform our staff for priority access.</p>
+                        <p class="text-sm text-gray-600">
+                            <strong>No ID Required.</strong> Please inform our staff - they will visually verify and may ask follow-up questions to ensure fairness.
+                        </p>
                     </div>
                 </label>
             </div>
@@ -264,13 +268,7 @@
         </div>
     </div>
 
-    <!-- Loading Overlay -->
-    <div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center" style="display: none; z-index: 2000;">
-        <div class="bg-white rounded-xl p-8 flex items-center space-x-4">
-            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            <span class="text-lg font-semibold">Saving to database...</span>
-        </div>
-    </div>
+    <!-- Removed laggy loading overlay for better performance -->
 
     <script>
         // Settings object for dynamic configuration
@@ -280,16 +278,31 @@
             restaurant_name: 'GERVACIOS RESTAURANT & LOUNGE'
         };
 
-        // Update step indicators based on customer type
-        function updateStepIndicators(isPriority) {
-            const stepIndicator = document.getElementById('stepIndicator');
-            if (stepIndicator) {
-                if (isPriority) {
-                    stepIndicator.textContent = 'Step 1 of 4';
-                } else {
-                    stepIndicator.textContent = 'Step 1 of 3';
+        // Enhanced step indicator with progress bar
+        class StepIndicator {
+            constructor() {
+                this.currentStep = 1;
+                this.totalSteps = 3;
+            }
+            
+            updateStep(step, isPriority = false) {
+                this.currentStep = step;
+                this.totalSteps = isPriority ? 4 : 3;
+                
+                const indicator = document.getElementById('stepIndicator');
+                
+                if (indicator) {
+                    indicator.textContent = `Step ${step} of ${this.totalSteps}`;
                 }
             }
+        }
+
+        // Initialize step indicator
+        const stepIndicator = new StepIndicator();
+
+        // Update step indicators based on customer type (backward compatibility)
+        function updateStepIndicators(isPriority) {
+            stepIndicator.updateStep(1, isPriority);
         }
 
         // Restore data when in edit mode
@@ -302,10 +315,19 @@
                 
                 // Restore contact number (remove '09' prefix if it exists)
                 const contactValue = existingData.contact_number || '';
-                if (contactValue.startsWith('09')) {
+                
+                // Check if contact number is valid (only numbers and proper format)
+                const cleanContact = contactValue.replace(/\D/g, '');
+                if (contactValue && cleanContact.length === 11 && contactValue.startsWith('09')) {
+                    // Valid 11-digit number starting with 09
                     document.getElementById('contact').value = contactValue.substring(2);
-                } else {
+                } else if (contactValue && cleanContact.length === 9 && !contactValue.includes('09')) {
+                    // Valid 9-digit number without 09 prefix
                     document.getElementById('contact').value = contactValue;
+                } else {
+                    // Invalid or corrupted contact number - clear the field
+                    document.getElementById('contact').value = '';
+                    console.log('Cleared invalid contact number:', contactValue);
                 }
                 
                 // In edit mode, let user freely choose priority - don't force any state
@@ -346,31 +368,62 @@
             document.getElementById('date').textContent = dateFormatted;
         }
 
-        // Load settings from API
-        async function loadSettings() {
-            try {
-                const response = await fetch('/api/settings/public', {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                });
+        // API Cache for performance optimization
+        class ApiCache {
+            constructor() {
+                this.cache = new Map();
+                this.cacheTimeout = 5 * 60 * 1000; // 5 minutes
+            }
+            
+            async getCachedSettings() {
+                const cacheKey = 'settings';
+                const cached = this.cache.get(cacheKey);
                 
-                const data = await response.json();
-                if (data.success) {
-                    settings = {
-                        party_size_min: data.settings.party_size_min || 1,
-                        party_size_max: data.settings.party_size_max || 20,
-                        restaurant_name: data.settings.restaurant_name || 'GERVACIOS RESTAURANT & LOUNGE'
-                    };
-                    
-                    // Update the UI with dynamic limits
-                    updatePartySizeUI();
+                if (cached && Date.now() - cached.timestamp < this.cacheTimeout) {
+                    console.log('Using cached settings');
+                    return cached.data;
                 }
-            } catch (error) {
-                console.error('Failed to load settings:', error);
-                // Use default values if API fails
+                
+                try {
+                    const response = await fetch('/api/settings/public', {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+                    
+                    const data = await response.json();
+                    if (data.success) {
+                        this.cache.set(cacheKey, {
+                            data: data,
+                            timestamp: Date.now()
+                        });
+                        console.log('Settings cached successfully');
+                        return data;
+                    }
+                } catch (error) {
+                    console.error('Failed to load settings:', error);
+                    return cached?.data || null;
+                }
+            }
+        }
+
+        // Initialize API cache
+        const apiCache = new ApiCache();
+
+        // Load settings from API with caching
+        async function loadSettings() {
+            const data = await apiCache.getCachedSettings();
+            if (data && data.success) {
+                settings = {
+                    party_size_min: data.settings.party_size_min || 1,
+                    party_size_max: data.settings.party_size_max || 20,
+                    restaurant_name: data.settings.restaurant_name || 'GERVACIOS RESTAURANT & LOUNGE'
+                };
+                
+                // Update the UI with dynamic limits
+                updatePartySizeUI();
             }
         }
 
@@ -415,18 +468,69 @@
                 }
             @endif
 
+            // Performance Optimizer for DOM manipulation
+            class PerformanceOptimizer {
+                constructor() {
+                    this.observers = new Map();
+                }
+                
+                // Debounced function to prevent excessive calls
+                debounce(func, wait) {
+                    let timeout;
+                    return function executedFunction(...args) {
+                        const later = () => {
+                            clearTimeout(timeout);
+                            func(...args);
+                        };
+                        clearTimeout(timeout);
+                        timeout = setTimeout(later, wait);
+                    };
+                }
+                
+                // Optimized contact field monitoring using MutationObserver
+                optimizeContactField() {
+                    const contactField = document.getElementById('contact');
+                    if (!contactField) return;
+                    
+                    // Debounced validation function
+                    const debouncedValidation = this.debounce(() => {
+                        if (contactField.value.length > 9) {
+                            contactField.value = contactField.value.substring(0, 9);
+                            console.warn('Contact field automatically trimmed to 9 digits');
+                        }
+                    }, 100);
+                    
+                    // Use MutationObserver instead of setInterval for better performance
+                    const observer = new MutationObserver(debouncedValidation);
+                    observer.observe(contactField, { 
+                        attributes: true, 
+                        childList: true, 
+                        subtree: true 
+                    });
+                    
+                    this.observers.set('contact', observer);
+                }
+                
+                // Cleanup observers
+                destroy() {
+                    this.observers.forEach(observer => observer.disconnect());
+                    this.observers.clear();
+                }
+            }
+
+            // Initialize performance optimizer
+            perfOptimizer = new PerformanceOptimizer();
+            
+            // Initialize debounced contact check function
+            initializeDebouncedContactCheck();
+
             // Ensure contact field is properly limited on page load
             const contactField = document.getElementById('contact');
             if (contactField) {
                 handleContactInput();
                 
-                // Set up continuous monitoring to prevent any bypassing of the 9-digit limit
-                setInterval(() => {
-                    if (contactField.value.length > 9) {
-                        contactField.value = contactField.value.substring(0, 9);
-                        console.warn('Contact field automatically trimmed to 9 digits');
-                    }
-                }, 100); // Check every 100ms
+                // Use optimized monitoring instead of setInterval
+                perfOptimizer.optimizeContactField();
             }
 
             // Check name field on page load to show priority section if name is already entered
@@ -439,35 +543,124 @@
             setupErrorClearingListeners();
         });
 
+        // Enhanced form validator with real-time feedback
+        class FormValidator {
+            constructor() {
+                this.rules = {
+                    name: {
+                        required: true,
+                        minLength: 2,
+                        maxLength: 50,
+                        pattern: /^[a-zA-Z\s\-'.]+$/,
+                        message: 'Name must be 2-50 characters, letters only'
+                    },
+                    contact: {
+                        required: false,
+                        pattern: /^[0-9]{9}$/,
+                        message: 'Enter exactly 9 digits (09 prefix included)'
+                    },
+                    party_size: {
+                        required: true,
+                        min: 1,
+                        max: 20,
+                        message: 'Party size must be 1-20 people'
+                    }
+                };
+            }
+            
+            validateField(fieldName, value) {
+                const rule = this.rules[fieldName];
+                if (!rule) return { valid: true };
+                
+                if (rule.required && !value.trim()) {
+                    return { valid: false, message: `${fieldName} is required` };
+                }
+                
+                if (value && rule.pattern && !rule.pattern.test(value)) {
+                    return { valid: false, message: rule.message };
+                }
+                
+                if (value && rule.minLength && value.length < rule.minLength) {
+                    return { valid: false, message: rule.message };
+                }
+                
+                return { valid: true };
+            }
+            
+            showFieldError(fieldId, message) {
+                const field = document.getElementById(fieldId);
+                const container = field.closest('.field-container') || field.closest('div').parentElement;
+                
+                // Remove existing error
+                const existingError = container.querySelector('.field-error');
+                if (existingError) existingError.remove();
+                
+                // Add new error
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'field-error text-red-600 text-sm mt-1';
+                errorDiv.textContent = XSSPrevention.sanitizeInput(message);
+                container.appendChild(errorDiv);
+                
+                // Add error styling
+                field.classList.add('border-red-500', 'bg-red-50');
+            }
+            
+            clearFieldError(fieldId) {
+                const field = document.getElementById(fieldId);
+                const container = field.closest('.field-container') || field.closest('div').parentElement;
+                
+                // Remove error styling
+                field.classList.remove('border-red-500', 'bg-red-50');
+                
+                // Remove error message
+                const existingError = container.querySelector('.field-error');
+                if (existingError) existingError.remove();
+            }
+        }
+
+        // Initialize form validator
+        const formValidator = new FormValidator();
+
         // Setup event listeners to clear errors when user starts correcting
         function setupErrorClearingListeners() {
-            // Name field error clearing
+            // Name field error clearing with real-time validation
             const nameField = document.getElementById('name');
             if (nameField) {
                 nameField.addEventListener('input', function() {
-                    if (this.value.trim()) {
-                        clearFieldError('name');
+                    const validation = formValidator.validateField('name', this.value);
+                    if (validation.valid) {
+                        formValidator.clearFieldError('name');
+                        clearGeneralError();
+                    } else {
+                        formValidator.showFieldError('name', validation.message);
                     }
                 });
             }
 
-            // Party size field error clearing
+            // Party size field error clearing with real-time validation
             const partySizeField = document.getElementById('party_size');
             if (partySizeField) {
                 partySizeField.addEventListener('input', function() {
-                    if (parseInt(this.value) >= 1) {
-                        clearFieldError('party_size');
+                    const validation = formValidator.validateField('party_size', this.value);
+                    if (validation.valid) {
+                        formValidator.clearFieldError('party_size');
+                        clearGeneralError();
+                    } else {
+                        formValidator.showFieldError('party_size', validation.message);
                     }
                 });
             }
 
-            // Contact field error clearing
+            // Contact field error clearing with real-time validation
             const contactField = document.getElementById('contact');
             if (contactField) {
                 contactField.addEventListener('input', function() {
-                    const value = this.value.trim();
-                    if (value.length >= 1 && value.length <= 9 && /^[0-9]+$/.test(value)) {
-                        clearFieldError('contact');
+                    const validation = formValidator.validateField('contact', this.value);
+                    if (validation.valid) {
+                        formValidator.clearFieldError('contact');
+                        clearGeneralError();
+                    } else {
+                        formValidator.showFieldError('contact', validation.message);
                     }
                 });
             }
@@ -476,6 +669,7 @@
             document.querySelectorAll('input[name="is_priority"]').forEach(radio => {
                 radio.addEventListener('change', function() {
                     clearPrioritySectionError();
+                    clearGeneralError();
                     handlePriorityChange();
                 });
             });
@@ -483,7 +677,7 @@
             // Priority type selection error clearing
             document.querySelectorAll('input[name="priority_type"]').forEach(radio => {
                 radio.addEventListener('change', function() {
-                    clearFieldError('priority_type');
+                    clearGeneralError();
                 });
             });
         }
@@ -510,7 +704,11 @@
             // Allow empty field during typing
             if (value === '') {
                 clearFieldError('party_size');
+                // Don't hide priority section if name is still entered
+                const nameInput = document.getElementById('name');
+                if (!nameInput.value.trim()) {
                 hidePrioritySection();
+                }
                 return;
             }
             
@@ -602,13 +800,10 @@
                 console.log('Stripped 09 prefix, remaining:', value);
             }
             
-            // Validate the final length
-            if (value.length > 0 && value.length < 9) {
-                showFieldError('contact', 'Invalid Contact Number', 'Please enter a complete 9-digit mobile number (XX XXX XXXX). The "09" prefix is already included.');
-            } else if (value.length > 9) {
-                showFieldError('contact', 'Invalid Contact Number', 'Please enter a valid 9-digit mobile number (XX XXX XXXX). The "09" prefix is already included.');
-                // Trim to 9 digits
-                value = value.substring(0, 9);
+            // Validate the final length - must be exactly 9 digits
+            if (value.length > 0 && value.length !== 9) {
+                showFieldError('contact', 'Invalid Contact Number', 'Please enter exactly 9 digits (XX XXX XXXX). The "09" prefix is already included.');
+                return; // Don't update the field value if invalid
             }
             
             contactInput.value = value;
@@ -657,10 +852,10 @@
             console.log('Current selectedPriorityType:', selectedPriorityType);
             
             if (isPriorityNo) {
-                // If "No" is selected, clear priority type and hide priority section
+                // If "No" is selected, clear priority type but keep section visible
                 selectedPriorityType = null;
-                hidePrioritySection();
-                console.log('Priority set to No - cleared priority type and hid section');
+                // Don't hide priority section - keep it visible so user can change their mind
+                console.log('Priority set to No - cleared priority type but keeping section visible');
             } else if (isPriorityYes) {
                 // If "Yes" is selected, show priority section
                 showPrioritySection();
@@ -736,6 +931,40 @@
         function goBack() {
             window.location.href = "/";
         }
+
+        // Test function to verify validation is working
+        function testValidation() {
+            console.log('🧪 TESTING VALIDATION - Clearing all fields...');
+            
+            // Clear all fields
+            document.getElementById('name').value = '';
+            document.getElementById('party_size').value = '';
+            document.getElementById('contact').value = '';
+            
+            // Uncheck priority
+            const priorityRadios = document.querySelectorAll('input[name="is_priority"]');
+            priorityRadios.forEach(radio => radio.checked = false);
+            
+            // Hide priority section
+            hidePrioritySection();
+            
+            console.log('🧪 Fields cleared, now calling submitForm()...');
+            submitForm();
+        }
+
+        // Make test function available globally
+        window.testValidation = testValidation;
+
+        // Add additional event listener to Continue button for debugging
+        document.addEventListener('DOMContentLoaded', function() {
+            const continueBtn = document.getElementById('continueBtn');
+            if (continueBtn) {
+                continueBtn.addEventListener('click', function(e) {
+                    console.log('🖱️ Continue button clicked via event listener');
+                    // Don't prevent default, let the onclick handler work too
+                });
+            }
+        });
 
         // Party size controls
         function incrementPartySize() {
@@ -829,10 +1058,44 @@
         }
 
 
-        // Enhanced validation error display functions
+        // XSS Prevention utility
+        class XSSPrevention {
+            static escapeHtml(text) {
+                if (typeof text !== 'string') return text;
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+            
+            static sanitizeInput(input) {
+                if (typeof input !== 'string') return input;
+                
+                // Remove script tags and dangerous attributes
+                return input
+                    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+                    .replace(/javascript:/gi, '')
+                    .replace(/on\w+\s*=/gi, '')
+                    .trim();
+            }
+        }
+
+        // Enhanced validation error display functions with XSS protection
         function showFieldError(fieldId, errorTitle, errorMessage) {
             const field = document.getElementById(fieldId);
+            
+            // Check if field exists
+            if (!field) {
+                console.error(`❌ Field with ID '${fieldId}' not found, cannot show error`);
+                return;
+            }
+            
             const container = field.closest('div').parentElement;
+            
+            // Check if container exists
+            if (!container) {
+                console.error(`❌ Container not found for field '${fieldId}', cannot show error`);
+                return;
+            }
             
             // Add error styling to field
             field.classList.add('border-red-500', 'bg-red-50', 'error-shake');
@@ -844,16 +1107,27 @@
                 existingError.remove();
             }
             
-            // Create error message element
+            // Create error message element with XSS protection
             const errorDiv = document.createElement('div');
             errorDiv.className = 'error-message flex items-start space-x-2 mt-3 text-red-600';
-            errorDiv.innerHTML = `
-                <i class="fas fa-exclamation-circle text-red-500 text-sm mt-0.5 flex-shrink-0"></i>
-                <div>
-                    <p class="font-semibold text-sm">${errorTitle}</p>
-                    <p class="text-sm">${errorMessage}</p>
-                </div>
-            `;
+            
+            // Use safe DOM manipulation to prevent XSS
+            const icon = document.createElement('i');
+            icon.className = 'fas fa-exclamation-circle text-red-500 text-sm mt-0.5 flex-shrink-0';
+            
+            const contentDiv = document.createElement('div');
+            const titleP = document.createElement('p');
+            titleP.className = 'font-semibold text-sm';
+            titleP.textContent = XSSPrevention.sanitizeInput(errorTitle);
+            
+            const messageP = document.createElement('p');
+            messageP.className = 'text-sm';
+            messageP.textContent = XSSPrevention.sanitizeInput(errorMessage);
+            
+            contentDiv.appendChild(titleP);
+            contentDiv.appendChild(messageP);
+            errorDiv.appendChild(icon);
+            errorDiv.appendChild(contentDiv);
             
             // Insert error message after the field
             container.appendChild(errorDiv);
@@ -870,7 +1144,20 @@
 
         function clearFieldError(fieldId) {
             const field = document.getElementById(fieldId);
+            
+            // Check if field exists
+            if (!field) {
+                console.log(`⚠️ Field with ID '${fieldId}' not found, skipping error clearing`);
+                return;
+            }
+            
             const container = field.closest('div').parentElement;
+            
+            // Check if container exists
+            if (!container) {
+                console.log(`⚠️ Container not found for field '${fieldId}', skipping error clearing`);
+                return;
+            }
             
             // Remove error styling from field
             field.classList.remove('border-red-500', 'bg-red-50', 'error-shake');
@@ -883,7 +1170,7 @@
             }
         }
 
-        function showPrioritySectionError() {
+        function showPrioritySectionError(customMessage = null) {
             const prioritySection = document.getElementById('prioritySection');
             
             // Add error styling to the priority section
@@ -895,14 +1182,18 @@
                 existingError.remove();
             }
             
+            // Use custom message or default
+            const errorTitle = 'Priority Question Required';
+            const errorDescription = customMessage || 'Please answer whether your party includes a priority guest.';
+            
             // Create error message element
             const errorDiv = document.createElement('div');
             errorDiv.className = 'error-message flex items-start space-x-2 mt-3 text-red-600';
             errorDiv.innerHTML = `
                 <i class="fas fa-exclamation-circle text-red-500 text-sm mt-0.5 flex-shrink-0"></i>
                 <div>
-                    <p class="font-semibold text-sm">Priority Question Required</p>
-                    <p class="text-sm">Please answer whether your party includes a priority guest.</p>
+                    <p class="font-semibold text-sm">${errorTitle}</p>
+                    <p class="text-sm">${errorDescription}</p>
                 </div>
             `;
             
@@ -929,6 +1220,47 @@
             const existingError = prioritySection.querySelector('.error-message');
             if (existingError) {
                 existingError.remove();
+            }
+        }
+
+        // Show general error message at the top of the form
+        function showGeneralError(message) {
+            // Remove existing general error if any
+            const existingGeneralError = document.querySelector('.general-error-message');
+            if (existingGeneralError) {
+                existingGeneralError.remove();
+            }
+            
+            // Create general error message
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'general-error-message bg-red-50 border-2 border-red-200 rounded-xl p-4 mb-6';
+            errorDiv.innerHTML = `
+                <div class="flex items-start space-x-3">
+                    <i class="fas fa-exclamation-triangle text-red-500 text-xl mt-0.5 flex-shrink-0"></i>
+                    <div>
+                        <h3 class="font-bold text-red-800 text-lg">Please Fix the Following Issues:</h3>
+                        <p class="text-red-700 mt-1">${message}</p>
+                    </div>
+                </div>
+            `;
+            
+            // Insert at the top of the form
+            const form = document.getElementById('registrationForm');
+            form.insertBefore(errorDiv, form.firstChild);
+            
+            // Auto-remove after 10 seconds
+            setTimeout(() => {
+                if (errorDiv && errorDiv.parentNode) {
+                    errorDiv.remove();
+                }
+            }, 10000);
+        }
+
+        // Clear general error message
+        function clearGeneralError() {
+            const existingGeneralError = document.querySelector('.general-error-message');
+            if (existingGeneralError) {
+                existingGeneralError.remove();
             }
         }
 
@@ -1014,69 +1346,151 @@
             return !hasErrors;
         }
 
-        // Enhanced submit form function
+        // Enhanced submit form function with comprehensive validation
         function submitForm() {
+            console.log('🚀 SUBMIT FORM CALLED - VALIDATION STARTING');
+            
             const name = document.getElementById('name').value.trim();
             const partySize = document.getElementById('party_size').value;
             const contactInput = document.getElementById('contact').value.trim();
             const prioritySection = document.getElementById('prioritySection');
             const isPriority = document.querySelector('input[name="is_priority"]:checked');
 
-            // Clear all previous errors
+            console.log('📋 Form Data:', {
+                name: name,
+                partySize: partySize,
+                contactInput: contactInput,
+                isPriority: isPriority ? isPriority.value : 'none',
+                selectedPriorityType: selectedPriorityType
+            });
+
+            // Clear all previous errors first
             clearFieldError('name');
+            clearFieldError('party_size');
             clearFieldError('contact');
+            clearFieldError('priority_type');
             clearPrioritySectionError();
+            clearGeneralError();
 
             let hasErrors = false;
+            let errorCount = 0;
 
-            // Client-side validation with detailed error messages
+            console.log('🔍 Starting comprehensive form validation...');
+
+            // 1. NAME VALIDATION (Required)
             if (!name) {
-                showFieldError('name', 'Name is required', 'Please enter your name or a nickname');
+                showFieldError('name', 'Name is Required', 'Please enter your name or nickname to continue');
                 hasErrors = true;
+                errorCount++;
+                console.log('❌ Name field is empty');
+            } else if (name.length < 2) {
+                showFieldError('name', 'Name Too Short', 'Please enter at least 2 characters for your name');
+                hasErrors = true;
+                errorCount++;
+                console.log('❌ Name is too short');
+            } else if (!/^[a-zA-Z\s\-'.]+$/.test(name)) {
+                showFieldError('name', 'Invalid Name Format', 'Name can only contain letters, spaces, hyphens, apostrophes, and periods');
+                hasErrors = true;
+                errorCount++;
+                console.log('❌ Name contains invalid characters');
             }
 
-            // Validate party size
-            if (!partySize || parseInt(partySize) < 1) {
-                showFieldError('party_size', 'Party size must be at least 1', 'Use the + button to increase party size');
-                hasErrors = true;
-            }
-
-            // Validate contact number if entered
-            if (contactInput.length > 0) {
-                // Ensure contact number is not more than 9 digits (since 09 is visual prefix)
-                if (contactInput.length > 9) {
-                    showFieldError('contact', 'Contact number too long', 'Enter maximum 9 digits (e.g., 17 123 4567). The "09" prefix is already included.');
+            // 2. PARTY SIZE VALIDATION (Required)
+            if (!partySize || partySize === '') {
+                showFieldError('party_size', 'Party Size Required', 'Please enter the number of people in your group using the +/- buttons');
                     hasErrors = true;
+                errorCount++;
+                console.log('❌ Party size is empty');
                 } else {
-                    // Check if user typed complete number (9 digits) or partial number (1-8 digits)
-                    const isCompleteNumber = contactInput.length === 9;
-                    const isPartialNumber = contactInput.length >= 1 && contactInput.length <= 8;
-                    const isNumbersOnly = /^[0-9]+$/.test(contactInput);
-                    
-                    if (!isNumbersOnly || (!isCompleteNumber && !isPartialNumber)) {
-                        showFieldError('contact', 'Invalid phone number format', 'Enter 9 digits (e.g., 17 123 4567). Full number will be 0917 123 4567');
+                const partySizeNum = parseInt(partySize);
+                if (isNaN(partySizeNum)) {
+                    showFieldError('party_size', 'Invalid Party Size', 'Please enter a valid number using the +/- buttons');
                         hasErrors = true;
-                    }
+                    errorCount++;
+                    console.log('❌ Party size is not a number');
+                } else if (partySizeNum < 1) {
+                    showFieldError('party_size', 'Party Size Too Small', 'Party size must be at least 1 person');
+                    hasErrors = true;
+                    errorCount++;
+                    console.log('❌ Party size is less than 1');
+                } else if (partySizeNum > 20) {
+                    showFieldError('party_size', 'Party Size Too Large', 'Maximum party size is 20 people. For larger groups, please approach our staff');
+                    hasErrors = true;
+                    errorCount++;
+                    console.log('❌ Party size exceeds maximum');
                 }
             }
 
-            // Priority question is required if name is entered (priority section is visible)
-            if (name.length > 0 && !isPriority) {
-                showPrioritySectionError();
+            // 3. CONTACT NUMBER VALIDATION (Optional but must be valid if provided)
+            if (contactInput.length > 0) {
+                const cleanContact = contactInput.replace(/\D/g, '');
+                
+                if (cleanContact.length === 0) {
+                    showFieldError('contact', 'Invalid Contact Number', 'Please enter numbers only, or leave this field blank');
                 hasErrors = true;
+                    errorCount++;
+                    console.log('❌ Contact contains no numbers');
+                } else if (cleanContact.length < 9) {
+                    showFieldError('contact', 'Incomplete Contact Number', 'Please enter a complete 9-digit number (e.g., 17 123 4567) or leave blank');
+                    hasErrors = true;
+                    errorCount++;
+                    console.log('❌ Contact number is incomplete');
+                } else if (cleanContact.length > 9) {
+                    showFieldError('contact', 'Contact Number Too Long', 'Please enter exactly 9 digits (XX XXX XXXX). The "09" prefix is already included');
+                    hasErrors = true;
+                    errorCount++;
+                    console.log('❌ Contact number is too long');
+                } else if (!/^[0-9]{9}$/.test(cleanContact)) {
+                    showFieldError('contact', 'Invalid Contact Format', 'Please enter only numbers (e.g., 17 123 4567)');
+                    hasErrors = true;
+                    errorCount++;
+                    console.log('❌ Contact number format is invalid');
+                }
             }
 
-            // If priority is yes but no type selected
-            if (isPriority && isPriority.value === '1' && !selectedPriorityType) {
-                showFieldError('priority_type', 'Priority type required', 'Please select a priority type (Senior, PWD, or Pregnant)');
-                hasErrors = true;
+            // 4. PRIORITY QUESTION VALIDATION (Required when name is entered)
+            if (name.length > 0) {
+                if (!isPriority) {
+                    showPrioritySectionError('Please answer the priority question to continue');
+                    hasErrors = true;
+                    errorCount++;
+                    console.log('❌ Priority question not answered');
+                } else if (isPriority.value === '1') {
+                    // If priority is YES, check if priority type is selected
+                    if (!selectedPriorityType) {
+                        // Show error in priority section instead of non-existent field
+                        showPrioritySectionError('Please select a priority type (Senior, PWD, or Pregnant) from the modal');
+                        hasErrors = true;
+                        errorCount++;
+                        console.log('❌ Priority type not selected');
+                    }
+                }
+                // If priority is NO (value === '0'), no additional validation needed
             }
 
-            // If there are validation errors, stop here
+            // 5. FINAL VALIDATION CHECK
             if (hasErrors) {
-                console.log('❌ Validation errors found, stopping submission');
+                console.log(`❌ Form validation failed with ${errorCount} error(s). Please fix all errors before continuing.`);
+                
+                // Show a general error message at the top
+                showGeneralError(`Please complete all required fields (${errorCount} error${errorCount > 1 ? 's' : ''} found)`);
+                
+                // Focus on the first error field
+                const firstErrorField = document.querySelector('.border-red-500');
+                if (firstErrorField) {
+                    setTimeout(() => {
+                        firstErrorField.focus();
+                        firstErrorField.scrollIntoView({ 
+                            behavior: 'smooth', 
+                            block: 'center' 
+                        });
+                    }, 100);
+                }
+                
                 return;
             }
+
+            console.log('✅ All form validation passed, proceeding with submission...');
 
             // Check for duplicate contact if contact number is provided
             if (contactInput) {
@@ -1088,8 +1502,8 @@
                         showFieldError('contact', 'Duplicate Contact Number', 'This contact number is already registered in the system. Please use a different contact number.');
                         
                         // Clear the contact field and focus on it
-                        document.getElementById('contact').value = '';
-                        document.getElementById('contact').focus();
+                                document.getElementById('contact').value = '';
+                                document.getElementById('contact').focus();
                         
                     } else {
                         console.log('✅ No duplicate found, proceeding with registration');
@@ -1107,8 +1521,11 @@
         }
 
         function proceedWithFormSubmission(name, partySize, contactInput, isPriority) {
-            // Show loading
-            showLoading();
+            // Clear any general errors since form is proceeding
+            clearGeneralError();
+            
+            // Disable button to prevent double submission
+            document.getElementById('continueBtn').disabled = true;
 
             // Prepare form data
             const formData = new FormData();
@@ -1129,9 +1546,14 @@
                     formData.append('priority_type', '');
                     console.log('⚠️ User chose Yes but no priority type selected - sending empty string');
                 }
+            } else if (isPriority && isPriority.value === '0') {
+                // User chose "No" - send 'normal' as priority type
+                formData.append('priority_type', 'normal');
+                console.log('✅ User chose No - sending normal priority type');
             } else {
-                // User chose "No" - explicitly don't send priority_type field
-                console.log('✅ User chose No - not sending priority_type field');
+                // No priority selection - default to normal
+                formData.append('priority_type', 'normal');
+                console.log('✅ No priority selection - defaulting to normal');
             }
             
             // Add edit mode flag
@@ -1150,6 +1572,9 @@
             
             // Log what we're actually sending
             console.log('=== FORM DATA BEING SENT ===');
+            console.log('contactInput value:', contactInput);
+            console.log('contactInput type:', typeof contactInput);
+            console.log('contactInput length:', contactInput.length);
             for (let [key, value] of formData.entries()) {
                 console.log(`FormData: ${key} = ${value}`);
             }
@@ -1161,11 +1586,13 @@
                 body: formData,
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
                 }
             })
             .then(response => response.json())
             .then(data => {
-                hideLoading();
+                // Re-enable button
+                document.getElementById('continueBtn').disabled = false;
                 
                 // Debug logging
                 console.log('Server response:', data);
@@ -1199,11 +1626,11 @@
                         
                         // If no field-specific errors were handled, show general modal
                         if (!hasFieldErrors) {
-                            let errorMessage = 'Please fix the following errors:\n\n';
-                            for (const [field, messages] of Object.entries(data.errors)) {
-                                errorMessage += `• ${messages[0]}\n`;
-                            }
-                            showIncompleteModal(errorMessage);
+                        let errorMessage = 'Please fix the following errors:\n\n';
+                        for (const [field, messages] of Object.entries(data.errors)) {
+                            errorMessage += `• ${messages[0]}\n`;
+                        }
+                        showIncompleteModal(errorMessage);
                         }
                     } else {
                         showIncompleteModal(data.message || 'Registration failed. Please try again.');
@@ -1211,26 +1638,15 @@
                 }
             })
             .catch(error => {
-                hideLoading();
+                // Re-enable button
+                document.getElementById('continueBtn').disabled = false;
                 console.error('Error:', error);
                 alert('An error occurred. Please try again or contact staff for assistance.');
             });
         }
 
 
-        // Show loading overlay
-        function showLoading() {
-            // HIDDEN: Loading modal display disabled but functionality preserved
-            console.log('Loading modal hidden - saving to database...');
-            document.getElementById('continueBtn').disabled = true;
-        }
-
-        // Hide loading overlay
-        function hideLoading() {
-            // HIDDEN: Loading modal display disabled but functionality preserved
-            console.log('Loading modal hidden - database save complete');
-            document.getElementById('continueBtn').disabled = false;
-        }
+        // Removed laggy loading overlay functions for better performance
 
         // Incomplete Information Modal Functions
         function showIncompleteModal(message = 'Some required fields are missing.') {
@@ -1323,35 +1739,54 @@
 
         // Duplicate contact modal function removed - now using simple error message
 
-        // Duplicate contact checking function
-        async function checkDuplicateContact(contactNumber) {
-            try {
-                console.log('🔍 Checking for duplicate contact:', contactNumber);
-                
-                const response = await fetch('/kiosk/check-duplicate-contact', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    body: JSON.stringify({
-                        contact: contactNumber
-                    })
-                });
+        // Global performance optimizer instance
+        let perfOptimizer;
 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
+        // Debounced duplicate contact checking function for performance
+        let debouncedContactCheck;
+        
+        // Initialize the debounced function when perfOptimizer is ready
+        function initializeDebouncedContactCheck() {
+            if (perfOptimizer) {
+                debouncedContactCheck = perfOptimizer.debounce(async (contactNumber) => {
+                    try {
+                        console.log('🔍 Checking for duplicate contact:', contactNumber);
+                        
+                        const response = await fetch('/kiosk/check-duplicate-contact', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            body: JSON.stringify({
+                                contact: contactNumber
+                            })
+                        });
 
-                const data = await response.json();
-                console.log('📞 Duplicate check response:', data);
-                
-                return data;
-            } catch (error) {
-                console.error('❌ Error checking duplicate contact:', error);
-                throw error;
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+
+                        const data = await response.json();
+                        console.log('📞 Duplicate check response:', data);
+                        
+                        return data;
+                    } catch (error) {
+                        console.error('❌ Error checking duplicate contact:', error);
+                        throw error;
+                    }
+                }, 500); // 500ms debounce delay
             }
+        }
+
+        // Original function for backward compatibility
+        async function checkDuplicateContact(contactNumber) {
+            if (!debouncedContactCheck) {
+                console.warn('Debounced contact check not initialized yet');
+                return;
+            }
+            return await debouncedContactCheck(contactNumber);
         }
 
         // Duplicate contact modal function removed - now using simple error message

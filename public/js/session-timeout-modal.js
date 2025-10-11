@@ -235,12 +235,41 @@ class SessionTimeoutModal {
     }
 
     continueSession() {
-        // Hide modal
-        this.modalElement.style.display = 'none';
+        console.log('Extending session...');
+
+        // Hide modal immediately
+        if (this.modalElement) {
+            this.modalElement.style.display = 'none';
+            this.modalElement.style.visibility = 'hidden';
+            this.modalElement.style.opacity = '0';
+            this.modalElement.classList.add('hidden');
+        }
+
         this.isModalShown = false;
 
-        // Reset timeout
-        this.resetTimeout();
+        // Clear ALL timers and intervals
+        if (this.timeoutTimer) {
+            clearTimeout(this.timeoutTimer);
+            this.timeoutTimer = null;
+        }
+        if (this.warningTimer) {
+            clearTimeout(this.warningTimer);
+            this.warningTimer = null;
+        }
+
+        // Clear any countdown intervals
+        if (this.countdownInterval) {
+            clearInterval(this.countdownInterval);
+            this.countdownInterval = null;
+        }
+
+        // Reset last activity time
+        this.lastActivity = Date.now();
+
+        // Restart timeout timer (this will give user another full timeout period)
+        this.startTimeoutTimer();
+
+        console.log('Session extended successfully - user has full timeout period again');
     }
 
     returnToStart() {

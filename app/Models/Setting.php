@@ -135,6 +135,170 @@ class Setting extends Model
     }
 
     /**
+     * Get store hours for a specific day
+     * @param string $day monday, tuesday, wednesday, etc.
+     */
+    public static function getStoreHours(string $day): ?array
+    {
+        $day = strtolower($day);
+        $openKey = "{$day}_open";
+        $closeKey = "{$day}_close";
+        
+        $open = self::get($openKey);
+        $close = self::get($closeKey);
+        
+        // If both are null or '00:00', store is closed
+        if ($open === null && $close === null) {
+            return null;
+        }
+        
+        // Check for closed indicator (00:00 for both open and close)
+        if ($open === '00:00' && $close === '00:00') {
+            return null;
+        }
+        
+        return [
+            'open' => $open,
+            'close' => $close,
+            'is_closed' => ($open === null || $close === null || ($open === '00:00' && $close === '00:00')),
+        ];
+    }
+
+    /**
+     * Check if store is currently open
+     */
+    public static function isStoreOpen(): bool
+    {
+        $now = now();
+        $day = strtolower($now->format('l')); // monday, tuesday, etc.
+        $currentTime = $now->format('H:i');
+        
+        $hours = self::getStoreHours($day);
+        
+        // Closed all day
+        if ($hours === null || $hours['is_closed']) {
+            return false;
+        }
+        
+        return $currentTime >= $hours['open'] && $currentTime <= $hours['close'];
+    }
+
+    /**
+     * Get today's store hours
+     */
+    public static function getTodayHours(): ?array
+    {
+        $today = strtolower(now()->format('l'));
+        return self::getStoreHours($today);
+    }
+
+    /**
+     * Get all store hours for the week
+     */
+    public static function getWeeklyHours(): array
+    {
+        $days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+        $schedule = [];
+        
+        foreach ($days as $day) {
+            $schedule[$day] = self::getStoreHours($day);
+        }
+        
+        return $schedule;
+    }
+
+    /**
+     * Update store hours for a specific day
+     */
+    public static function updateStoreHours(string $day, ?string $openTime, ?string $closeTime): bool
+    {
+        try {
+            $day = strtolower($day);
+            $openKey = "{$day}_open";
+            $closeKey = "{$day}_close";
+            
+            self::set(
+                $openKey, 
+                $openTime, 
+                'time', 
+                'hours', 
+                ucfirst($day) . ' opening time'
+            );
+            
+            self::set(
+                $closeKey, 
+                $closeTime, 
+                'time', 
+                'hours', 
+                ucfirst($day) . ' closing time'
+            );
+            
+            return true;
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
+    /**
+     * Get restaurant name
+     */
+    public static function getRestaurantName(): string
+    {
+        return self::get('restaurant_name', 'Restaurant');
+    }
+
+    /**
+     * Get restaurant information
+     */
+    public static function getRestaurantInfo(): array
+    {
+        return [
+            'name' => self::getRestaurantName(),
+            'address' => self::get('restaurant_address', ''),
+            'phone' => self::get('restaurant_phone', ''),
+        ];
+    }
+
+    /**
+     * Check if registration should be blocked (store closed)
+     */
+    public static function shouldBlockRegistration(): bool
+    {
+        return !self::isStoreOpen();
+    }
+
+    /**
+     * Get store status message for display
+     */
+    public static function getStoreStatusMessage(): string
+    {
+        if (self::isStoreOpen()) {
+            return "We're currently open!";
+        }
+        
+        // Get next open day
+        $weeklyHours = self::getWeeklyHours();
+        $today = strtolower(now()->format('l'));
+        
+        // Find next open day
+        $days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+        $currentDayIndex = array_search($today, $days);
+        
+        for ($i = 1; $i <= 7; $i++) {
+            $nextDayIndex = ($currentDayIndex + $i) % 7;
+            $nextDay = $days[$nextDayIndex];
+            $nextDayHours = $weeklyHours[$nextDay];
+            
+            if ($nextDayHours && !$nextDayHours['is_closed']) {
+                $nextOpen = now()->addDays($i)->copy()->setTimeFromTimeString($nextDayHours['open']);
+                return "We're currently closed. Opens {$nextOpen->diffForHumans()}";
+            }
+        }
+        
+        return "We're currently closed. Please check back later.";
+    }
+
+    /**
      * Boot method to clear cache when model is updated
      */
     protected static function boot()

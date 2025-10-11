@@ -10,8 +10,10 @@ class QueueEvent extends Model
 {
     use HasFactory;
 
+    protected $table = 'events';
+
     protected $fillable = [
-        'customer_id',
+        'queue_customer_id',
         'event_type',
         'event_time',
         'staff_id',
@@ -29,7 +31,7 @@ class QueueEvent extends Model
      */
     public function customer(): BelongsTo
     {
-        return $this->belongsTo(Customer::class);
+        return $this->belongsTo(Customer::class, 'queue_customer_id');
     }
 
     /**
@@ -78,6 +80,16 @@ class QueueEvent extends Model
         return $query->where('event_type', 'priority_applied');
     }
 
+    public function scopeRegistrationConfirmed($query)
+    {
+        return $query->where('event_type', 'registration_confirmed');
+    }
+
+    public function scopeIdVerified($query)
+    {
+        return $query->where('event_type', 'id_verified');
+    }
+
     /**
      * Scope for today's events
      */
@@ -93,13 +105,15 @@ class QueueEvent extends Model
     {
         return match($this->event_type) {
             'registered' => 'Registered',
+            'registration_confirmed' => 'Registration Confirmed',
+            'id_verified' => 'ID Verified',
+            'priority_applied' => 'Priority Applied',
             'called' => 'Called',
             'seated' => 'Seated',
             'completed' => 'Completed',
             'cancelled' => 'Cancelled',
             'no_show' => 'No Show',
             'hold' => 'Hold',
-            'priority_applied' => 'Priority Applied',
             default => 'Unknown'
         };
     }
@@ -111,13 +125,15 @@ class QueueEvent extends Model
     {
         return match($this->event_type) {
             'registered' => '📝',
+            'registration_confirmed' => '✅',
+            'id_verified' => '🆔',
+            'priority_applied' => '⭐',
             'called' => '📞',
             'seated' => '🪑',
             'completed' => '✅',
             'cancelled' => '❌',
             'no_show' => '⏰',
             'hold' => '⏸️',
-            'priority_applied' => '⭐',
             default => '❓'
         };
     }
@@ -129,13 +145,15 @@ class QueueEvent extends Model
     {
         return match($this->event_type) {
             'registered' => 'bg-blue-100 text-blue-800',
+            'registration_confirmed' => 'bg-green-100 text-green-800',
+            'id_verified' => 'bg-indigo-100 text-indigo-800',
+            'priority_applied' => 'bg-purple-100 text-purple-800',
             'called' => 'bg-yellow-100 text-yellow-800',
             'seated' => 'bg-green-100 text-green-800',
             'completed' => 'bg-emerald-100 text-emerald-800',
             'cancelled' => 'bg-red-100 text-red-800',
             'no_show' => 'bg-gray-100 text-gray-800',
             'hold' => 'bg-orange-100 text-orange-800',
-            'priority_applied' => 'bg-purple-100 text-purple-800',
             default => 'bg-gray-100 text-gray-800'
         };
     }
@@ -180,12 +198,14 @@ class QueueEvent extends Model
         return [
             'total_events' => $events->count(),
             'registered' => $events->where('event_type', 'registered')->count(),
+            'registration_confirmed' => $events->where('event_type', 'registration_confirmed')->count(),
+            'id_verified' => $events->where('event_type', 'id_verified')->count(),
+            'priority_applied' => $events->where('event_type', 'priority_applied')->count(),
             'called' => $events->where('event_type', 'called')->count(),
             'seated' => $events->where('event_type', 'seated')->count(),
             'completed' => $events->where('event_type', 'completed')->count(),
             'cancelled' => $events->where('event_type', 'cancelled')->count(),
             'no_show' => $events->where('event_type', 'no_show')->count(),
-            'priority_applied' => $events->where('event_type', 'priority_applied')->count(),
         ];
     }
 
@@ -205,6 +225,9 @@ class QueueEvent extends Model
             $breakdown[$hour] = [
                 'hour' => sprintf('%02d:00', $hour),
                 'registered' => 0,
+                'registration_confirmed' => 0,
+                'id_verified' => 0,
+                'priority_applied' => 0,
                 'called' => 0,
                 'seated' => 0,
                 'completed' => 0,

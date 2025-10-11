@@ -12,6 +12,8 @@ class Customer extends Model
 {
     use HasFactory;
 
+    protected $table = 'customers';
+
     protected $fillable = [
         'name',
         'party_size',
@@ -25,6 +27,9 @@ class Customer extends Model
         'status',
         'estimated_wait_minutes',
         'registered_at',
+        'registration_confirmed_at',
+        'id_verified_at',
+        'priority_applied_at',
         'called_at',
         'seated_at',
         'completed_at',
@@ -34,6 +39,7 @@ class Customer extends Model
         'assigned_table_id',
         'table_assigned_at',
         'estimated_departure',
+        'last_updated_at',
     ];
 
     protected $casts = [
@@ -42,11 +48,15 @@ class Customer extends Model
         'is_table_requested' => 'boolean',
         'id_verification_data' => 'array',
         'registered_at' => 'datetime',
+        'registration_confirmed_at' => 'datetime',
+        'id_verified_at' => 'datetime',
+        'priority_applied_at' => 'datetime',
         'called_at' => 'datetime',
         'seated_at' => 'datetime',
         'completed_at' => 'datetime',
         'table_assigned_at' => 'datetime',
         'estimated_departure' => 'datetime',
+        'last_updated_at' => 'datetime',
     ];
 
     /**
@@ -84,7 +94,7 @@ class Customer extends Model
      */
     public function table(): BelongsTo
     {
-        return $this->belongsTo(Table::class);
+        return $this->belongsTo(Table::class, 'table_id');
     }
 
     /**
@@ -92,23 +102,25 @@ class Customer extends Model
      */
     public function queueEvents(): HasMany
     {
-        return $this->hasMany(QueueEvent::class);
+        return $this->hasMany(QueueEvent::class, 'queue_customer_id');
+    }
+
+    // Note: ID verification functionality has been consolidated into PriorityVerification
+
+    /**
+     * Get all priority verifications for this customer
+     */
+    public function priorityVerifications(): HasMany
+    {
+        return $this->hasMany(PriorityVerification::class, 'queue_customer_id');
     }
 
     /**
-     * Get all ID verifications for this customer
+     * Get the latest priority verification for this customer
      */
-    public function idVerifications(): HasMany
+    public function latestPriorityVerification()
     {
-        return $this->hasMany(IdVerification::class);
-    }
-
-    /**
-     * Get the latest ID verification for this customer
-     */
-    public function latestIdVerification()
-    {
-        return $this->hasOne(IdVerification::class)->latest();
+        return $this->hasOne(PriorityVerification::class)->latest();
     }
 
     /**
@@ -172,11 +184,21 @@ class Customer extends Model
      */
     public function getPriorityLabelAttribute(): string
     {
+        // Handle group with priority member
+        if ($this->is_group && $this->has_priority_member) {
+            return match($this->priority_type) {
+                'senior' => 'Group (Senior Citizen)',
+                'pwd' => 'Group (PWD)',
+                'pregnant' => 'Group (Pregnant)',
+                default => 'Group'
+            };
+        }
+        
+        // Handle individual customers
         return match($this->priority_type) {
             'senior' => 'Senior Citizen',
             'pwd' => 'PWD',
             'pregnant' => 'Pregnant',
-            'group' => 'Group',
             'normal' => 'Regular',
             default => 'Regular'
         };
@@ -243,13 +265,86 @@ class Customer extends Model
     }
 
     /**
+     * Mark registration as confirmed
+     */
+    public function markRegistrationConfirmed(): void
+    {
+        $this->update([
+            'registration_confirmed_at' => now(),
+            'last_updated_at' => now()
+        ]);
+
+        $this->queueEvents()->create([
+            'event_type' => 'registration_confirmed',
+            'event_time' => now(),
+            'notes' => 'Registration confirmed and customer added to queue'
+        ]);
+    }
+
+    /**
+     * Mark ID verification as completed
+     */
+    public function markIdVerified(string $verifiedBy = null, array $verificationData = null): void
+    {
+        $this->update([
+            'id_verification_status' => 'verified',
+            'id_verified_at' => now(),
+            'id_verification_data' => $verificationData,
+            'last_updated_at' => now()
+        ]);
+
+        $this->queueEvents()->create([
+            'event_type' => 'id_verified',
+            'event_time' => now(),
+            'staff_id' => auth()->id(),
+            'notes' => 'ID verification completed',
+            'metadata' => [
+                'verified_by' => $verifiedBy,
+                'verification_data' => $verificationData
+            ]
+        ]);
+    }
+
+    /**
+     * Mark priority status as applied
+     */
+    public function markPriorityApplied(string $priorityType, bool $hasPriorityMember = true): void
+    {
+        $this->update([
+            'priority_type' => $priorityType,
+            'has_priority_member' => $hasPriorityMember,
+            'priority_applied_at' => now(),
+            'last_updated_at' => now()
+        ]);
+
+        $this->queueEvents()->create([
+            'event_type' => 'priority_applied',
+            'event_time' => now(),
+            'notes' => "Priority status applied: {$priorityType}",
+            'metadata' => [
+                'priority_type' => $priorityType,
+                'has_priority_member' => $hasPriorityMember
+            ]
+        ]);
+    }
+
+    /**
+     * Update last updated timestamp
+     */
+    public function touchLastUpdated(): void
+    {
+        $this->update(['last_updated_at' => now()]);
+    }
+
+    /**
      * Mark customer as called
      */
     public function markAsCalled(): void
     {
         $this->update([
             'status' => 'called',
-            'called_at' => now()
+            'called_at' => now(),
+            'last_updated_at' => now()
         ]);
 
         $this->queueEvents()->create([
@@ -267,7 +362,8 @@ class Customer extends Model
         $this->update([
             'status' => 'seated',
             'seated_at' => now(),
-            'table_id' => $tableId
+            'table_id' => $tableId,
+            'last_updated_at' => now()
         ]);
 
         $this->queueEvents()->create([
@@ -290,7 +386,8 @@ class Customer extends Model
     {
         $this->update([
             'status' => 'completed',
-            'completed_at' => now()
+            'completed_at' => now(),
+            'last_updated_at' => now()
         ]);
 
         $this->queueEvents()->create([
@@ -306,7 +403,8 @@ class Customer extends Model
     public function markAsCancelled(): void
     {
         $this->update([
-            'status' => 'cancelled'
+            'status' => 'cancelled',
+            'last_updated_at' => now()
         ]);
 
         $this->queueEvents()->create([
@@ -329,7 +427,8 @@ class Customer extends Model
     public function markAsNoShow(): void
     {
         $this->update([
-            'status' => 'no_show'
+            'status' => 'no_show',
+            'last_updated_at' => now()
         ]);
 
         $this->queueEvents()->create([
@@ -347,29 +446,61 @@ class Customer extends Model
     }
 
     /**
-     * Get next queue number
+     * Get next queue number with priority system
      */
-    public static function getNextQueueNumber(): int
+    public static function getNextQueueNumber($priorityType = 'normal'): int
     {
-        $lastCustomer = static::today()->orderBy('queue_number', 'desc')->first();
-        return ($lastCustomer ? $lastCustomer->queue_number : 0) + 1;
+        // Priority order: pregnant (highest) > pwd > senior > normal (lowest)
+        $priorityOrder = [
+            'pregnant' => 1,
+            'pwd' => 2, 
+            'senior' => 3,
+            'normal' => 4
+        ];
+        
+        $currentPriority = $priorityOrder[$priorityType] ?? 4;
+        
+        // Get the last customer with same or higher priority
+        $lastCustomer = static::today()
+            ->where(function($query) use ($priorityOrder, $currentPriority) {
+                foreach ($priorityOrder as $type => $order) {
+                    if ($order <= $currentPriority) {
+                        $query->orWhere('priority_type', $type);
+                    }
+                }
+            })
+            ->orderBy('queue_number', 'desc')
+            ->first();
+            
+        $nextQueueNumber = ($lastCustomer ? $lastCustomer->queue_number : 0) + 1;
+        
+        // Check if this queue number already exists (safety check)
+        $existingCustomer = static::today()->where('queue_number', $nextQueueNumber)->first();
+        if ($existingCustomer) {
+            // If duplicate found, get the highest queue number and add 1
+            $highestQueueNumber = static::today()->max('queue_number') ?? 0;
+            $nextQueueNumber = $highestQueueNumber + 1;
+        }
+        
+        return $nextQueueNumber;
     }
 
     /**
      * Reassign queue numbers to match current positions
      * This ensures queue numbers always align with actual positions
-     * Priority customers (senior, pwd, pregnant) are always placed before regular customers
+     * Priority customers (pregnant > pwd > senior) are always placed before regular customers
      */
     public static function reassignQueueNumbers(): void
     {
         // Get all waiting customers sorted by priority tier, then by registration time
+        // Using parameterized query to prevent SQL injection
         $waitingCustomers = static::where('status', 'waiting')
             ->orderByRaw("CASE 
-                WHEN priority_type IN ('senior', 'pwd', 'pregnant') THEN 1
-                WHEN priority_type = 'group' THEN 2
-                WHEN priority_type = 'normal' THEN 3
-                ELSE 4 
-            END")
+                WHEN priority_type = ? THEN 1  -- pregnant (highest priority)
+                WHEN priority_type = ? THEN 2  -- pwd
+                WHEN priority_type = ? THEN 3  -- senior
+                ELSE 4                          -- normal
+            END", ['pregnant', 'pwd', 'senior'])
             ->orderBy('registered_at', 'asc')
             ->get();
 
@@ -388,14 +519,8 @@ class Customer extends Model
      */
     public function getFormattedQueueNumberAttribute(): string
     {
-        $prefix = match($this->priority_type) {
-            'senior' => 'P',
-            'pwd' => 'P',
-            'pregnant' => 'P',
-            'group' => 'G',
-            'normal' => 'R',
-            default => 'R'
-        };
+        // Priority customers get 'P' prefix, normal customers get 'R' prefix
+        $prefix = $this->hasPriority() ? 'P' : 'R';
         
         // Zero-pad to 3 digits (P001, P002, R001, etc.)
         return $prefix . str_pad($this->queue_number, 3, '0', STR_PAD_LEFT);

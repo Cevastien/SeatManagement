@@ -9,6 +9,8 @@ class TermsConsent extends Model
 {
     use HasFactory;
 
+    protected $table = 'consents';
+
     protected $fillable = [
         'session_id',
         'action',

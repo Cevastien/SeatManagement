@@ -98,7 +98,7 @@ class TableSuggestionController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'customer_id' => 'required|exists:customers,id',
+                'customer_id' => 'required|exists:queue_customers,id',
             ]);
 
             if ($validator->fails()) {
@@ -230,7 +230,7 @@ class TableSuggestionController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'customer_id' => 'required|exists:customers,id',
+                'customer_id' => 'required|exists:queue_customers,id',
             ]);
 
             if ($validator->fails()) {

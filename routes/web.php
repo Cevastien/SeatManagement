@@ -47,6 +47,19 @@ Route::get('/kiosk/staffverification', function () {
     return view('kiosk.staffverification');
 })->name('kiosk.staffverification');
 
+// Staff Analytics Routes
+Route::prefix('staff')->group(function () {
+    Route::get('/analytics/dashboard', [\App\Http\Controllers\AnalyticsController::class, 'dashboard'])->name('staff.analytics.dashboard');
+    Route::get('/analytics/export/today', [\App\Http\Controllers\AnalyticsController::class, 'exportToday'])->name('staff.analytics.export.today');
+});
+
+// CSRF token route for AJAX requests
+Route::get('/api/csrf-token', function() {
+    return response()->json([
+        'csrf_token' => csrf_token()
+    ]);
+})->name('api.csrf-token');
+
 Route::get('/kiosk/webcam-config', function () {
     return response()->json(['webcam_available' => false]);
 });
@@ -132,5 +145,12 @@ Route::get('/admin/priority-pin-dashboard', function () {
 Route::post('/api/customer/request-verification', [\App\Http\Controllers\VerificationController::class, 'requestVerification'])->name('api.verification.request');
 Route::get('/api/customer/verification-status/{id}', [\App\Http\Controllers\VerificationController::class, 'checkVerificationStatus'])->name('api.verification.status');
 Route::get('/api/verification/pending', [\App\Http\Controllers\VerificationController::class, 'getPendingVerifications'])->name('api.verification.pending');
-Route::post('/api/verification/complete', [\App\Http\Controllers\VerificationController::class, 'verifyAndGeneratePIN'])->name('api.verification.complete');
+Route::post('/api/verification/complete', [\App\Http\Controllers\VerificationController::class, 'completeVerification'])->name('api.verification.complete');
+Route::post('/api/verification/reject', [\App\Http\Controllers\VerificationController::class, 'rejectVerification'])->name('api.verification.reject');
+Route::get('/api/verification/completed', [\App\Http\Controllers\VerificationController::class, 'getCompletedVerifications'])->name('api.verification.completed');
+
+// CSRF Token Route
+Route::get('/api/csrf-token', function () {
+    return response()->json(['csrf_token' => csrf_token()]);
+})->name('api.csrf-token');
 

@@ -4,130 +4,280 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Table extends Model
 {
     use HasFactory;
 
+    protected $table = 'tables';
+
     protected $fillable = [
-        'table_number',
-        'max_capacity',
-        'status',
-        'current_customer_id',
-        'occupied_at',
-        'estimated_departure',
-        'is_vip',
+        'number',          // Table number/name
+        'capacity',        // Max party size
+        'status',          // available, occupied, cleaning
+        'current_customer_id', // Customer currently seated
+        'occupied_at',     // When table was occupied
+        'is_vip',          // VIP table flag
+        'location',        // Table location (window, corner, etc.)
+        'notes',           // Special notes about the table
     ];
 
     protected $casts = [
         'occupied_at' => 'datetime',
-        'estimated_departure' => 'datetime',
         'is_vip' => 'boolean',
     ];
 
     /**
      * Get the customer currently seated at this table
      */
-    public function currentCustomer()
+    public function currentCustomer(): BelongsTo
     {
         return $this->belongsTo(Customer::class, 'current_customer_id');
     }
 
     /**
-     * Check if table is available for a given party size
+     * Get all customers who have used this table (historical)
      */
-    public function canAccommodate(int $partySize): bool
+    public function customers(): HasMany
     {
-        return $this->status === 'available' && $this->max_capacity >= $partySize;
+        return $this->hasMany(Customer::class, 'assigned_table_id');
     }
 
     /**
-     * Assign customer to this table
+     * Check if table can accommodate party size
      */
-    public function assignCustomer(Customer $customer): bool
+    public function canAccommodate(int $partySize): bool
     {
-        if (!$this->canAccommodate($customer->party_size)) {
-            return false;
-        }
+        return $this->status === 'available' && $this->capacity >= $partySize;
+    }
 
+    /**
+     * Check if table is available
+     */
+    public function isAvailable(): bool
+    {
+        return $this->status === 'available';
+    }
+
+    /**
+     * Check if table is occupied
+     */
+    public function isOccupied(): bool
+    {
+        return $this->status === 'occupied';
+    }
+
+    /**
+     * Check if table is being cleaned
+     */
+    public function isCleaning(): bool
+    {
+        return $this->status === 'cleaning';
+    }
+
+    /**
+     * Mark table as occupied (real-time seating only)
+     */
+    public function occupy(Customer $customer): void
+    {
         $this->update([
             'status' => 'occupied',
             'current_customer_id' => $customer->id,
-            'occupied_at' => Carbon::now(),
-            'estimated_departure' => $this->calculateEstimatedDeparture($customer->party_size),
+            'occupied_at' => now(),
         ]);
 
         // Update customer record
         $customer->update([
             'assigned_table_id' => $this->id,
-            'table_assigned_at' => Carbon::now(),
-            'estimated_departure' => $this->estimated_departure,
+            'table_assigned_at' => now(),
             'status' => 'seated',
         ]);
-
-        return true;
     }
 
     /**
-     * Free up the table when customer leaves
+     * Mark table as available when customer leaves
      */
-    public function freeTable(): void
+    public function makeAvailable(): void
     {
-        $customer = $this->currentCustomer;
-        if ($customer) {
-            $customer->update([
-                'assigned_table_id' => null,
-                'table_assigned_at' => null,
-                'estimated_departure' => null,
-                'status' => 'completed',
-            ]);
-        }
-
         $this->update([
             'status' => 'available',
             'current_customer_id' => null,
             'occupied_at' => null,
-            'estimated_departure' => null,
         ]);
     }
 
     /**
-     * Calculate estimated departure time based on party size
+     * Mark table as cleaning
      */
-    private function calculateEstimatedDeparture(int $partySize): Carbon
+    public function markForCleaning(): void
     {
-        $averageDiningTimes = [
-            1 => 30,  // Solo diners
-            2 => 35,  // Couples
-            3 => 45,  // Small groups
-            4 => 45,  // Standard groups
-            5 => 60,  // Large groups
-            6 => 60,  // Large groups
-            8 => 90,  // VIP table
-        ];
-
-        $averageTime = $averageDiningTimes[$partySize] ?? 45;
-        return Carbon::now()->addMinutes($averageTime);
+        $this->update([
+            'status' => 'cleaning',
+        ]);
     }
 
     /**
-     * Get minutes until table will be free
+     * Mark table as available after cleaning
      */
-    public function getMinutesUntilFree(): int
+    public function markCleaningComplete(): void
     {
-        if ($this->status !== 'occupied' || !$this->estimated_departure) {
-            return 0;
+        $this->update([
+            'status' => 'available',
+        ]);
+    }
+
+    /**
+     * Scope for available tables
+     */
+    public function scopeAvailable($query)
+    {
+        return $query->where('status', 'available');
+    }
+
+    /**
+     * Scope for occupied tables
+     */
+    public function scopeOccupied($query)
+    {
+        return $query->where('status', 'occupied');
+    }
+
+    /**
+     * Scope for tables being cleaned
+     */
+    public function scopeCleaning($query)
+    {
+        return $query->where('status', 'cleaning');
+    }
+
+    /**
+     * Scope for tables that can fit party size
+     */
+    public function scopeCanFit($query, int $partySize)
+    {
+        return $query->where('capacity', '>=', $partySize);
+    }
+
+    /**
+     * Scope for VIP tables
+     */
+    public function scopeVip($query)
+    {
+        return $query->where('is_vip', true);
+    }
+
+    /**
+     * Scope for regular tables
+     */
+    public function scopeRegular($query)
+    {
+        return $query->where('is_vip', false);
+    }
+
+    /**
+     * Get best available table for party size
+     */
+    public static function getBestAvailableTable(int $partySize): ?self
+    {
+        // First try to find exact capacity match
+        $exactMatch = static::available()
+            ->canFit($partySize)
+            ->where('capacity', $partySize)
+            ->first();
+
+        if ($exactMatch) {
+            return $exactMatch;
         }
 
-        return max(0, $this->estimated_departure->diffInMinutes(Carbon::now()));
+        // Then find smallest available table that can fit
+        return static::available()
+            ->canFit($partySize)
+            ->orderBy('capacity', 'asc')
+            ->first();
     }
 
     /**
-     * Check if table will be free soon (within next 15 minutes)
+     * Get all available tables that can accommodate party size
      */
-    public function willBeFreeSoon(): bool
+    public static function getAvailableTablesForParty(int $partySize): \Illuminate\Database\Eloquent\Collection
     {
-        return $this->getMinutesUntilFree() <= 15;
+        return static::available()
+            ->canFit($partySize)
+            ->orderBy('capacity', 'asc')
+            ->get();
+    }
+
+    /**
+     * Get table utilization statistics
+     */
+    public static function getUtilizationStats(): array
+    {
+        $totalTables = static::count();
+        $occupiedTables = static::occupied()->count();
+        $availableTables = static::available()->count();
+        $cleaningTables = static::cleaning()->count();
+
+        return [
+            'total_tables' => $totalTables,
+            'occupied' => $occupiedTables,
+            'available' => $availableTables,
+            'cleaning' => $cleaningTables,
+            'utilization_rate' => $totalTables > 0 ? round(($occupiedTables / $totalTables) * 100, 1) : 0,
+        ];
+    }
+
+    /**
+     * Get table capacity distribution
+     */
+    public static function getCapacityDistribution(): array
+    {
+        return static::selectRaw('capacity, COUNT(*) as count')
+            ->groupBy('capacity')
+            ->orderBy('capacity')
+            ->pluck('count', 'capacity')
+            ->toArray();
+    }
+
+    /**
+     * Get tables that have been occupied the longest
+     */
+    public function getLongestOccupiedTables(int $limit = 5): \Illuminate\Database\Eloquent\Collection
+    {
+        return static::occupied()
+            ->with('currentCustomer')
+            ->orderBy('occupied_at', 'asc')
+            ->limit($limit)
+            ->get();
+    }
+
+    /**
+     * Get table status label
+     */
+    public function getStatusLabelAttribute(): string
+    {
+        return match($this->status) {
+            'available' => 'Available',
+            'occupied' => 'Occupied',
+            'cleaning' => 'Cleaning',
+            default => 'Unknown'
+        };
+    }
+
+    /**
+     * Get table type label
+     */
+    public function getTypeLabelAttribute(): string
+    {
+        return $this->is_vip ? 'VIP' : 'Regular';
+    }
+
+    /**
+     * Get capacity label
+     */
+    public function getCapacityLabelAttribute(): string
+    {
+        return $this->capacity === 1 ? '1 person' : "{$this->capacity} people";
     }
 }

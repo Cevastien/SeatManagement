@@ -102,7 +102,7 @@ class ArchiveDailyData extends Command
         $this->info("📋 Archiving customers from {$archiveDate->format('Y-m-d')}...");
         
         // Get customers to archive (based on actual business operation date)
-        $customersToArchive = DB::table('customers')
+        $customersToArchive = DB::table('queue_customers')
             ->whereDate('registered_at', $archiveDate->format('Y-m-d'))
             ->get();
 
@@ -116,11 +116,11 @@ class ArchiveDailyData extends Command
 
         // Insert into archive table
         foreach ($customersToArchive as $customer) {
-            DB::table('customers_archive')->insert((array) $customer);
+            DB::table('queue_customers_archive')->insert((array) $customer);
         }
 
         // Delete from main table
-        $deletedCount = DB::table('customers')
+        $deletedCount = DB::table('queue_customers')
             ->whereDate('registered_at', $archiveDate->format('Y-m-d'))
             ->delete();
 
@@ -136,10 +136,10 @@ class ArchiveDailyData extends Command
         $this->info("📋 Archiving queue events from {$archiveDate->format('Y-m-d')}...");
         
         // Get queue events to archive (for customers from the archive date)
-        $queueEventsToArchive = DB::table('queue_events')
+        $queueEventsToArchive = DB::table('customer_events')
             ->whereIn('customer_id', function($query) use ($archiveDate) {
                 $query->select('id')
-                    ->from('customers_archive')
+                    ->from('queue_customers_archive')
                     ->whereDate('registered_at', $archiveDate->format('Y-m-d'));
             })
             ->orWhereDate('event_time', $archiveDate->format('Y-m-d'))
@@ -155,14 +155,14 @@ class ArchiveDailyData extends Command
 
         // Insert into archive table
         foreach ($queueEventsToArchive as $event) {
-            DB::table('queue_events_archive')->insert((array) $event);
+            DB::table('customer_events_archive')->insert((array) $event);
         }
 
         // Delete from main table
-        $deletedCount = DB::table('queue_events')
+        $deletedCount = DB::table('customer_events')
             ->whereIn('customer_id', function($query) use ($archiveDate) {
                 $query->select('id')
-                    ->from('customers_archive')
+                    ->from('queue_customers_archive')
                     ->whereDate('registered_at', $archiveDate->format('Y-m-d'));
             })
             ->orWhereDate('event_time', $archiveDate->format('Y-m-d'))
@@ -184,7 +184,7 @@ class ArchiveDailyData extends Command
             return 0;
         }
 
-        $verificationsToArchive = DB::table('priority_verifications')
+        $verificationsToArchive = DB::table('verifications')
             ->whereDate('created_at', $archiveDate->format('Y-m-d'))
             ->get();
 
@@ -198,11 +198,11 @@ class ArchiveDailyData extends Command
 
         // Insert into archive table
         foreach ($verificationsToArchive as $verification) {
-            DB::table('priority_verifications_archive')->insert((array) $verification);
+            DB::table('verifications_archive')->insert((array) $verification);
         }
 
         // Delete from main table
-        $deletedCount = DB::table('priority_verifications')
+        $deletedCount = DB::table('verifications')
             ->whereDate('created_at', $archiveDate->format('Y-m-d'))
             ->delete();
 

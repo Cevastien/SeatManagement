@@ -134,7 +134,7 @@ class ApiController extends Controller
     public function processOCR(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'customer_id' => 'required|exists:customers,id',
+            'customer_id' => 'required|exists:queue_customers,id',
             'image_data' => 'required|string', // Base64 encoded image
             'id_type' => 'required|in:senior_citizen,pwd',
         ]);

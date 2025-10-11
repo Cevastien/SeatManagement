@@ -1,311 +1,673 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Priority PIN Dashboard</title>
+    <title>Priority Management Kiosk</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        @keyframes pulse-ring {
+
+            0%,
+            100% {
+                transform: scale(0.95);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1.05);
+                opacity: 0.8;
+            }
+        }
+
+        .notification-pulse {
+            animation: pulse-ring 2s ease-in-out infinite;
+        }
+
+        .customer-list {
+            height: calc(100vh - 420px);
+        }
+    </style>
 </head>
-<body class="bg-gray-100">
-    <div class="min-h-screen">
-        <!-- Header -->
-        <div class="bg-white shadow">
-            <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-                <div class="flex justify-between items-center">
-                    <div>
-                        <h1 class="text-3xl font-bold text-gray-900">Priority Verification Dashboard</h1>
-                        <p class="mt-1 text-sm text-gray-500">Manage customer ID verifications and PIN generation</p>
-                    </div>
-                    <div class="flex items-center space-x-4">
-                        <div class="text-right">
-                            <p class="text-sm text-gray-500">Active PINs</p>
-                            <p class="text-2xl font-bold text-blue-600" id="activePINsCount">0</p>
-                        </div>
-                        <button onclick="loadRecentPINs()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
-                            <i class="fas fa-sync-alt mr-2"></i>Refresh
-                        </button>
+
+<body class="font-inter h-screen flex flex-col bg-gray-50" x-data="priorityApp()"
+    @new-priority-request.window="handleNewRequest($event.detail)">
+
+    <!-- Header -->
+    <header class="bg-[#111827] shadow-lg flex-shrink-0">
+        <div class="px-8 py-6 flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-black text-white mb-2">Priority Management System</h1>
+                <p class="text-gray-300 text-sm font-medium">Staff Kiosk Interface</p>
+            </div>
+            <div class="flex items-center space-x-6">
+                <div class="text-right">
+                    <p class="text-3xl font-bold text-white" x-text="currentTime"></p>
+                    <p class="text-xs text-gray-300 font-medium uppercase tracking-wider">Current Time</p>
+                </div>
+                <div x-show="pendingVerifications.length > 0" class="notification-pulse">
+                    <div class="bg-yellow-500 text-white px-5 py-3 rounded-xl font-bold shadow-lg">
+                        <i class="fas fa-bell mr-2"></i>
+                        <span x-text="pendingVerifications.length"></span> Pending
                     </div>
                 </div>
             </div>
         </div>
+    </header>
 
-        <!-- Main Content -->
-        <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <!-- Pending Verifications -->
-                <div class="bg-white shadow rounded-lg">
-                    <div class="px-6 py-4 border-b border-gray-200">
-                        <h2 class="text-lg font-medium text-gray-900">Pending Verifications</h2>
-                    </div>
-                    <div class="p-6">
-                        <div id="pendingVerifications" class="space-y-3">
-                            <p class="text-gray-500 text-center">No pending verifications</p>
+    <!-- Top Navigation -->
+    <nav class="bg-white shadow-md flex-shrink-0 border-b-2 border-gray-200">
+        <div class="flex items-center justify-center space-x-3 p-5">
+            <button @click="setNav('Dashboard')"
+                :class="activeNav === 'Dashboard' ? 'bg-[#111827] text-white shadow-lg' : 'bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300'"
+                class="flex flex-col items-center justify-center p-3 rounded-xl font-semibold text-base transition-all duration-200 min-w-[130px] h-[75px] border-2 border-transparent">
+                <i class="fas fa-home text-2xl mb-2"></i>
+                <span>Dashboard</span>
+            </button>
+            <button @click="setNav('Table Occupancy')"
+                :class="activeNav === 'Table Occupancy' ? 'bg-[#111827] text-white shadow-lg' : 'bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300'"
+                class="flex flex-col items-center justify-center p-3 rounded-xl font-semibold text-base transition-all duration-200 min-w-[130px] h-[75px] border-2 border-transparent">
+                <i class="fas fa-chair text-2xl mb-2"></i>
+                <span>Tables</span>
+            </button>
+            <button @click="setNav('Auto Table')"
+                :class="activeNav === 'Auto Table' ? 'bg-[#111827] text-white shadow-lg' : 'bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300'"
+                class="flex flex-col items-center justify-center p-3 rounded-xl font-semibold text-base transition-all duration-200 min-w-[130px] h-[75px] border-2 border-transparent">
+                <i class="fas fa-robot text-2xl mb-2"></i>
+                <span>Auto Table</span>
+            </button>
+            <button @click="setNav('Priority')"
+                :class="activeNav === 'Priority' ? 'bg-[#111827] text-white shadow-lg' : 'bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300'"
+                class="flex flex-col items-center justify-center p-3 rounded-xl font-semibold text-base transition-all duration-200 min-w-[130px] h-[75px] border-2 border-transparent">
+                <i class="fas fa-users text-2xl mb-2"></i>
+                <span>Priority</span>
+            </button>
+            <button @click="setNav('Analytics')"
+                :class="activeNav === 'Analytics' ? 'bg-[#111827] text-white shadow-lg' : 'bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300'"
+                class="flex flex-col items-center justify-center p-3 rounded-xl font-semibold text-base transition-all duration-200 min-w-[130px] h-[75px] border-2 border-transparent">
+                <i class="fas fa-chart-bar text-2xl mb-2"></i>
+                <span>Analytics</span>
+            </button>
+            <button @click="setNav('Settings')"
+                :class="activeNav === 'Settings' ? 'bg-[#111827] text-white shadow-lg' : 'bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300'"
+                class="flex flex-col items-center justify-center p-3 rounded-xl font-semibold text-base transition-all duration-200 min-w-[130px] h-[75px] border-2 border-transparent">
+                <i class="fas fa-cog text-2xl mb-2"></i>
+                <span>Settings</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-1 p-6 overflow-hidden">
+        <div class="h-full flex flex-col space-y-6">
+
+            <!-- Stats Bar -->
+            <div class="bg-white rounded-2xl p-8 shadow-lg flex-shrink-0 border border-gray-200">
+                <div class="grid grid-cols-4 gap-8">
+                    <div class="text-center border-r-2 border-gray-200 last:border-r-0">
+                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-yellow-100 mb-4">
+                            <i class="fas fa-clock text-yellow-600 text-2xl"></i>
                         </div>
+                        <p class="text-5xl font-black text-yellow-600 mb-2" x-text="pendingVerifications.length"></p>
+                        <p class="text-sm text-gray-600 font-semibold uppercase tracking-wide">Awaiting Verification</p>
+                    </div>
+                    <div class="text-center border-r-2 border-gray-200 last:border-r-0">
+                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-green-100 mb-4">
+                            <i class="fas fa-check-circle text-green-600 text-2xl"></i>
+                        </div>
+                        <p class="text-5xl font-black text-green-600 mb-2" x-text="verifiedCustomers.length"></p>
+                        <p class="text-sm text-gray-600 font-semibold uppercase tracking-wide">Verified Today</p>
+                    </div>
+                    <div class="text-center border-r-2 border-gray-200 last:border-r-0">
+                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-red-100 mb-4">
+                            <i class="fas fa-times-circle text-red-600 text-2xl"></i>
+                        </div>
+                        <p class="text-5xl font-black text-red-600 mb-2" x-text="rejectedCustomers.length"></p>
+                        <p class="text-sm text-gray-600 font-semibold uppercase tracking-wide">Rejected Today</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-blue-100 mb-4">
+                            <i class="fas fa-user-clock text-blue-600 text-2xl"></i>
+                        </div>
+                        <p class="text-xl font-bold text-gray-800 mb-2 truncate px-2"
+                            x-text="nextVerification?.name || 'None'"></p>
+                        <p class="text-sm text-gray-600 font-semibold uppercase tracking-wide">Next in Queue</p>
                     </div>
                 </div>
+            </div>
 
-                <!-- Recent PINs -->
-                <div class="bg-white shadow rounded-lg">
-                    <div class="px-6 py-4 border-b border-gray-200">
-                        <h2 class="text-lg font-medium text-gray-900">Recent Verifications</h2>
-                    </div>
-                    <div class="p-6">
-                        <div id="recentPINs" class="space-y-3">
-                            <p class="text-gray-500 text-center">Loading...</p>
+            <!-- Action Buttons -->
+            <div class="flex-shrink-0" x-show="selectedVerification">
+                <!-- For Pregnant Customers -->
+                <div x-show="selectedVerification?.priorityType === 'Pregnant'" class="grid grid-cols-2 gap-5">
+                    <button @click="verifyPriority()"
+                        class="px-8 py-4 font-bold text-lg rounded-xl transition-all duration-200 bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl">
+                        <i class="fas fa-check mr-2"></i>Verify & Approve
+                    </button>
+                    <button @click="rejectPriority()"
+                        class="px-8 py-4 font-bold text-lg rounded-xl transition-all duration-200 bg-red-600 hover:bg-red-700 text-white shadow-lg hover:shadow-xl">
+                        <i class="fas fa-times mr-2"></i>Reject Priority
+                    </button>
+                </div>
+
+                <!-- For Other Customers -->
+                <div x-show="selectedVerification?.priorityType !== 'Pregnant'" class="grid grid-cols-3 gap-5">
+                    <button x-show="selectedVerification && !selectedVerification.idNumber"
+                        @click="openVerificationModal()"
+                        class="px-8 py-4 font-bold text-lg rounded-xl transition-all duration-200 bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl">
+                        <i class="fas fa-id-card mr-2"></i>Input ID Number
+                    </button>
+
+                    <template x-if="selectedVerification && selectedVerification.idNumber">
+                        <button @click="verifyPriority()"
+                            class="px-8 py-4 font-bold text-lg rounded-xl transition-all duration-200 bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl">
+                            <i class="fas fa-check mr-2"></i>Verify & Approve
+                        </button>
+                    </template>
+
+                    <template x-if="selectedVerification && selectedVerification.idNumber">
+                        <button @click="rejectPriority()"
+                            class="px-8 py-4 font-bold text-lg rounded-xl transition-all duration-200 bg-red-600 hover:bg-red-700 text-white shadow-lg hover:shadow-xl">
+                            <i class="fas fa-times mr-2"></i>Reject Priority
+                        </button>
+                    </template>
+
+                    <template x-if="selectedVerification && selectedVerification.idNumber">
+                        <button @click="openVerificationModal()"
+                            class="px-8 py-4 font-bold text-lg rounded-xl transition-all duration-200 bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl">
+                            <i class="fas fa-edit mr-2"></i>Edit ID Number
+                        </button>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Customer List -->
+            <div class="flex-1 bg-white rounded-2xl shadow-lg overflow-hidden flex flex-col border border-gray-200">
+                <div class="bg-gray-50 px-8 py-5 border-b-2 border-gray-200">
+                    <h3 class="text-lg font-black text-[#111827] uppercase tracking-wide">Priority Verification Queue
+                    </h3>
+                </div>
+
+                <div class="customer-list overflow-y-auto p-5 space-y-4">
+
+                    <!-- Pending Verifications -->
+                    <template x-for="verification in pendingVerifications" :key="verification.id">
+                        <div @click="selectVerification(verification)"
+                            :class="selectedVerification?.id === verification.id ? 'border-[#111827] bg-gray-50 shadow-xl' : 'border-gray-200 hover:border-gray-400 hover:shadow-lg'"
+                            class="bg-white rounded-xl p-5 border-2 cursor-pointer transition-all duration-200">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-5">
+                                    <div class="bg-[#111827] text-white rounded-xl px-4 py-3 shadow-md">
+                                        <p class="text-2xl font-black" x-text="'#' + verification.queueNumber"></p>
+                                    </div>
+                                    <div>
+                                        <p class="text-lg font-bold text-gray-900 mb-2" x-text="verification.name"></p>
+                                        <div class="flex items-center space-x-3 mb-2">
+                                            <span
+                                                class="inline-flex items-center px-3 py-1 rounded-full bg-gray-100 text-gray-700 text-sm font-semibold border border-gray-300">
+                                                <i class="fas fa-users mr-2 text-gray-500"></i>
+                                                <span x-text="verification.partySize"></span>
+                                            </span>
+                                            <span
+                                                class="inline-flex items-center px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-sm font-semibold border border-blue-300">
+                                                <i class="fas fa-star mr-2 text-blue-500"></i>
+                                                <span x-text="verification.priorityType"></span>
+                                            </span>
+                                        </div>
+                                        <p class="text-sm text-blue-600 font-bold" x-show="verification.idNumber">
+                                            <i class="fas fa-id-card mr-1"></i>
+                                            ID: <span x-text="verification.idNumber"></span>
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <span x-show="!verification.idNumber"
+                                        class="px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wide bg-yellow-100 text-yellow-800 border border-yellow-300">PENDING
+                                        ID CHECK</span>
+                                    <span x-show="verification.idNumber"
+                                        class="px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wide bg-blue-100 text-blue-800 border border-blue-300">READY
+                                        FOR VERIFICATION</span>
+                                    <p class="text-xs text-gray-500 mt-3 font-medium">Visit #<span
+                                            x-text="verification.visitCount"></span></p>
+                                </div>
+                            </div>
                         </div>
+                    </template>
+
+                    <!-- Verified Customers -->
+                    <template x-for="customer in verifiedCustomers" :key="customer.id">
+                        <div
+                            class="bg-white rounded-xl p-5 border-2 border-green-200 hover:shadow-lg transition-all duration-200">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-5">
+                                    <div class="bg-green-600 text-white rounded-xl px-4 py-3 shadow-md">
+                                        <p class="text-2xl font-black" x-text="'#' + customer.queueNumber"></p>
+                                    </div>
+                                    <div>
+                                        <p class="text-lg font-bold text-gray-900 mb-2" x-text="customer.name"></p>
+                                        <p class="text-sm text-gray-600 font-medium"
+                                            x-text="customer.partySize + ' people • ' + customer.priorityType"></p>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <span
+                                        class="px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wide bg-green-100 text-green-800 border border-green-300">VERIFIED</span>
+                                    <p class="text-xs text-gray-500 mt-3 font-medium"
+                                        x-text="customer.verifiedAt + ' • ' + customer.verifiedBy"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Rejected Customers -->
+                    <template x-for="customer in rejectedCustomers" :key="customer.id">
+                        <div
+                            class="bg-white rounded-xl p-5 border-2 border-red-200 hover:shadow-lg transition-all duration-200">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-5">
+                                    <div class="bg-red-600 text-white rounded-xl px-4 py-3 shadow-md">
+                                        <p class="text-2xl font-black" x-text="'#' + customer.queueNumber"></p>
+                                    </div>
+                                    <div>
+                                        <p class="text-lg font-bold text-gray-900 mb-2" x-text="customer.name"></p>
+                                        <p class="text-sm text-gray-600 font-medium"
+                                            x-text="customer.partySize + ' people • ' + customer.priorityType"></p>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <span
+                                        class="px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wide bg-red-100 text-red-800 border border-red-300">REJECTED</span>
+                                    <p class="text-xs text-gray-500 mt-3 font-medium" x-text="customer.rejectionReason">
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t-2 border-gray-200 px-8 py-5 flex-shrink-0 shadow-lg">
+        <div class="flex items-center justify-between">
+            <button onclick="goBack()"
+                class="px-8 py-4 font-bold text-lg rounded-xl transition-all duration-200 bg-white hover:bg-gray-50 border-2 border-gray-300 text-gray-800 shadow-md hover:shadow-lg">
+                <i class="fas fa-arrow-left mr-2"></i>
+                <span>Back</span>
+            </button>
+            <div class="text-sm text-gray-600 font-medium">
+                Staff: <span class="font-bold text-[#111827]">Staff-001</span> • <span
+                    class="text-green-600 font-bold">● System Active</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- NEW REQUEST NOTIFICATION MODAL -->
+    <div x-show="showNewRequestAlert" x-transition
+        class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50"
+        @click.self="dismissNewRequest()">
+        <div class="bg-white rounded-2xl p-10 max-w-md w-full mx-4 shadow-2xl border-4 border-yellow-400">
+            <div class="text-center mb-8">
+                <i class="fas fa-bell text-7xl text-yellow-500 notification-pulse mb-5"></i>
+                <h3 class="text-3xl font-black text-[#111827]">New Priority Request!</h3>
+            </div>
+
+            <div class="bg-yellow-50 rounded-xl p-6 mb-8 border-2 border-yellow-200" x-show="newRequestData">
+                <p class="text-2xl font-bold text-gray-900 mb-5" x-text="newRequestData?.name"></p>
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                    <div class="bg-white rounded-lg p-4 border border-gray-200">
+                        <p class="text-gray-600 mb-2 font-medium">Queue Number:</p>
+                        <p class="font-black text-xl text-[#111827]" x-text="'#' + newRequestData?.queueNumber"></p>
+                    </div>
+                    <div class="bg-white rounded-lg p-4 border border-gray-200">
+                        <p class="text-gray-600 mb-2 font-medium">Party Size:</p>
+                        <p class="font-black text-xl text-gray-800" x-text="newRequestData?.partySize + ' people'"></p>
+                    </div>
+                    <div class="bg-white rounded-lg p-4 border border-gray-200">
+                        <p class="text-gray-600 mb-2 font-medium">Priority Type:</p>
+                        <p class="font-black text-xl text-blue-600" x-text="newRequestData?.priorityType"></p>
+                    </div>
+                    <div class="bg-white rounded-lg p-4 border border-gray-200">
+                        <p class="text-gray-600 mb-2 font-medium">Visit Count:</p>
+                        <p class="font-black text-xl text-gray-800" x-text="'Visit #' + newRequestData?.visitCount"></p>
                     </div>
                 </div>
+            </div>
+
+            <div class="flex space-x-4">
+                <button @click="goToPriorityScreen()"
+                    class="flex-1 px-8 py-4 font-bold text-lg rounded-xl transition-all duration-200 bg-[#111827] hover:bg-gray-800 text-white shadow-lg hover:shadow-xl">
+                    Go to Priority Screen
+                </button>
+                <button @click="dismissNewRequest()"
+                    class="flex-1 px-8 py-4 font-bold text-lg rounded-xl transition-all duration-200 bg-white hover:bg-gray-50 border-2 border-gray-300 text-gray-800 shadow-lg hover:shadow-xl">
+                    Dismiss
+                </button>
             </div>
         </div>
     </div>
 
-    <!-- PIN Generation Modal -->
-    <div id="pinModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 hidden">
-        <div class="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
-            <div class="flex items-center justify-between mb-6">
-                <h2 class="text-3xl font-bold text-gray-900 flex items-center">
-                    <i class="fas fa-key text-blue-600 mr-3"></i>
-                    Generate PIN
-                </h2>
-                <button onclick="closePINModal()" class="text-gray-400 hover:text-gray-600">
-                    <i class="fas fa-times text-2xl"></i>
-                </button>
+    <!-- ID INPUT MODAL -->
+    <div x-show="showVerificationModal" x-transition
+        class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-10 max-w-lg w-full mx-4 shadow-2xl border-2 border-gray-200">
+            <h3 class="text-3xl font-black text-[#111827] mb-8">Verify Priority Customer</h3>
+
+            <!-- ID Number Input -->
+            <div class="mb-8" x-show="selectedVerification?.priorityType !== 'Pregnant'">
+                <label class="block text-lg font-bold text-gray-700 mb-4">ID Number (Required)</label>
+                <input type="text" x-model="idNumber" placeholder="Enter ID number from physical ID"
+                    class="w-full border-2 border-gray-300 rounded-xl px-6 py-5 text-xl focus:border-[#111827] focus:ring-4 focus:ring-gray-200 focus:outline-none transition-all">
+                <p class="text-sm text-gray-500 mt-4 font-medium">Please enter the ID number after physically checking
+                    the customer's ID</p>
             </div>
 
-            <!-- Customer Details -->
-            <div class="bg-gray-100 rounded-xl p-4 mb-6">
-                <div class="flex items-center justify-between mb-2">
-                    <p class="text-sm text-gray-600 font-semibold">Customer Details</p>
-                    <span id="modalPriorityTag" class="px-3 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">Priority</span>
+            <!-- Pregnant Customer Notice -->
+            <div class="mb-8 bg-pink-50 border-2 border-pink-300 rounded-xl p-8"
+                x-show="selectedVerification?.priorityType === 'Pregnant'">
+                <div class="flex items-center">
+                    <div class="w-16 h-16 bg-pink-500 rounded-xl flex items-center justify-center mr-5">
+                        <i class="fas fa-heart text-white text-3xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-xl font-bold text-pink-800 mb-2">Pregnant Customer</p>
+                        <p class="text-sm text-pink-600 font-medium">No ID verification required. Physical observation
+                            is sufficient.</p>
+                    </div>
                 </div>
-                <p class="text-xl font-bold text-gray-900 mb-1" id="modalCustomerName">Loading...</p>
-                <div class="flex items-center text-gray-700 text-sm">
-                    <span id="modalPriorityType">Senior Citizen</span>
-                </div>
-            </div>
-
-            <!-- Generated PIN Display -->
-            <div class="bg-gray-50 rounded-xl p-8 text-center mb-6" id="pinDisplaySection">
-                <p class="text-sm text-gray-500 mb-2" id="pinLabel">Verification PIN</p>
-                <div class="text-6xl font-bold text-gray-900 mb-2" id="modalGeneratedPIN">0000</div>
-                <p class="text-sm text-gray-500" id="pinDescription">Customer will be automatically verified</p>
             </div>
 
             <!-- Action Buttons -->
-            <div class="flex justify-between space-x-4">
-                <button onclick="closePINModal()" class="flex-1 px-4 py-3 bg-white hover:bg-gray-50 border-2 border-gray-300 text-gray-800 font-semibold rounded-lg transition">
-                    <i class="fas fa-times mr-2"></i> Cancel
+            <div class="grid grid-cols-2 gap-5 mb-5">
+                <button @click="verifyPriority()"
+                    :disabled="selectedVerification?.priorityType !== 'Pregnant' && !idNumber"
+                    :class="(selectedVerification?.priorityType !== 'Pregnant' && !idNumber) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-700'"
+                    class="px-8 py-4 font-bold text-lg rounded-xl transition-all duration-200 bg-green-600 text-white shadow-lg flex items-center justify-center">
+                    <i class="fas fa-check mr-2"></i>
+                    <span>Verify & Approve</span>
                 </button>
-                <button onclick="rejectVerification()" class="px-4 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition">
-                    <i class="fas fa-times mr-2"></i> Reject
-                </button>
-                <button onclick="confirmPIN()" class="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition">
-                    <i class="fas fa-check mr-2"></i> Confirm & Generate PIN
+                <button @click="rejectPriority()"
+                    :disabled="selectedVerification?.priorityType !== 'Pregnant' && !idNumber"
+                    :class="(selectedVerification?.priorityType !== 'Pregnant' && !idNumber) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-700'"
+                    class="px-8 py-4 font-bold text-lg rounded-xl transition-all duration-200 bg-red-600 text-white shadow-lg flex items-center justify-center">
+                    <i class="fas fa-times mr-2"></i>
+                    <span>Reject Priority</span>
                 </button>
             </div>
+
+            <!-- Cancel Button -->
+            <button @click="closeVerificationModal()"
+                class="w-full px-8 py-4 font-bold text-lg rounded-xl transition-all duration-200 bg-white hover:bg-gray-50 border-2 border-gray-300 text-gray-800 shadow-lg">
+                Cancel
+            </button>
         </div>
     </div>
 
     <script>
-        let currentVerificationId = null;
-        let currentCustomerData = null;
+        function priorityApp() {
+            return {
+                activeNav: 'Priority',
+                showVerificationModal: false,
+                showNewRequestAlert: false,
+                newRequestData: null,
+                selectedVerification: null,
+                idNumber: '',
+                currentTime: '',
+                pendingVerifications: [],
+                verifiedCustomers: [],
+                rejectedCustomers: [],
 
-        // Load recent PINs
-        async function loadRecentPINs() {
-            try {
-                const response = await fetch('/api/staff/pending-verifications');
-                const data = await response.json();
-                
-                if (data.success) {
-                    displayPendingVerifications(data.pending_verifications);
-                }
-            } catch (error) {
-                console.error('Error loading recent PINs:', error);
-            }
-        }
+                init() {
+                    this.updateTime();
+                    setInterval(() => this.updateTime(), 1000);
+                    this.loadData();
+                    setInterval(() => this.loadData(), 5000);
 
-        // Display pending verifications
-        function displayPendingVerifications(verifications) {
-            const container = document.getElementById('pendingVerifications');
-            
-            if (verifications.length === 0) {
-                container.innerHTML = '<p class="text-gray-500 text-center">No pending verifications</p>';
-                return;
-            }
+                    setInterval(() => {
+                        this.refreshCSRFToken();
+                    }, 10 * 60 * 1000);
+                },
 
-            container.innerHTML = verifications.map(verification => `
-                <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer" 
-                     onclick="triggerPINModal(${verification.id}, '${verification.customer_name}', '${verification.priority_type}')">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <h3 class="font-semibold text-gray-900">${verification.customer_name}</h3>
-                            <p class="text-sm text-gray-600">${verification.priority_display}</p>
-                            <p class="text-xs text-gray-500">Requested at ${verification.requested_at}</p>
-                        </div>
-                        <div class="text-right">
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                Pending
-                            </span>
-                            <p class="text-xs text-gray-500 mt-1">${verification.time_elapsed}m ago</p>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-        }
+                updateTime() {
+                    const now = new Date();
+                    this.currentTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                },
 
-        // Trigger PIN modal
-        function triggerPINModal(verificationId, customerName, priorityType) {
-            currentVerificationId = verificationId;
-            currentCustomerData = {
-                name: customerName,
-                priority_type: priorityType || 'senior'
-            };
+                get nextVerification() {
+                    return this.pendingVerifications[0] || null;
+                },
 
-            // Update modal content
-            document.getElementById('modalCustomerName').textContent = customerName;
-            document.getElementById('modalGeneratedPIN').textContent = '0000';
-            document.getElementById('modalPriorityType').textContent = getPriorityDisplay(priorityType);
+                async loadData() {
+                    try {
+                        const response = await fetch('/api/verification/pending', {
+                            credentials: 'same-origin'
+                        });
 
-            // Update modal title and messaging for pregnant customers
-            if (priorityType === 'pregnant') {
-                document.querySelector('#pinModal h2').innerHTML = '<i class="fas fa-heart text-pink-600 mr-3"></i>Priority Assistance';
-                document.getElementById('pinLabel').textContent = 'Priority Status';
-                document.getElementById('modalGeneratedPIN').textContent = '✓';
-                document.getElementById('modalGeneratedPIN').className = 'text-6xl font-bold text-green-600 mb-2';
-                document.getElementById('pinDescription').textContent = 'Customer will be assisted with priority seating';
-            } else {
-                document.querySelector('#pinModal h2').innerHTML = '<i class="fas fa-key text-blue-600 mr-3"></i>Generate PIN';
-                document.getElementById('pinLabel').textContent = 'Verification PIN';
-                document.getElementById('modalGeneratedPIN').textContent = '0000';
-                document.getElementById('modalGeneratedPIN').className = 'text-6xl font-bold text-gray-900 mb-2';
-                document.getElementById('pinDescription').textContent = 'Customer will be automatically verified';
-            }
+                        if (response.status === 419) {
+                            const newToken = await this.refreshCSRFToken();
+                            if (newToken) {
+                                setTimeout(() => this.loadData(), 500);
+                                return;
+                            } else {
+                                window.location.reload();
+                                return;
+                            }
+                        }
 
-            // Show modal
-            document.getElementById('pinModal').classList.remove('hidden');
-        }
+                        const data = await response.json();
 
-        // Helper function to get priority display name
-        function getPriorityDisplay(priorityType) {
-            switch(priorityType) {
-                case 'senior': return 'Senior Citizen';
-                case 'pwd': return 'PWD';
-                case 'pregnant': return 'Pregnant';
-                default: return 'Regular';
-            }
-        }
+                        if (data.success) {
+                            this.pendingVerifications = data.pending_verifications.map(v => ({
+                                id: v.id,
+                                queueNumber: '#' + v.queue_number,
+                                name: v.customer_name,
+                                partySize: v.party_size,
+                                priorityType: v.priority_display,
+                                waitTime: v.time_elapsed,
+                                status: 'Awaiting ID Check',
+                                idRequired: v.priority_type !== 'pregnant',
+                                visitCount: v.visit_count,
+                                visitType: 'regular',
+                                idNumber: v.id_number || '',
+                                contactNumber: v.contact_number || '',
+                                registeredAt: v.registered_at,
+                                estimatedWaitMinutes: v.estimated_wait_minutes || 0
+                            }));
+                        }
+                    } catch (error) {
+                        console.error('Error loading data:', error);
+                    }
 
-        // Close PIN modal
-        function closePINModal() {
-            document.getElementById('pinModal').classList.add('hidden');
-            currentVerificationId = null;
-            currentCustomerData = null;
-        }
+                    try {
+                        const today = new Date().toISOString().split('T')[0];
+                        const response = await fetch(`/api/verification/completed?date=${today}`, {
+                            credentials: 'same-origin'
+                        });
 
-        // Confirm PIN generation
-        async function confirmPIN() {
-            if (!currentVerificationId) {
-                alert('No verification selected');
-                return;
-            }
+                        if (response.status === 419) {
+                            const newToken = await this.refreshCSRFToken();
+                            if (newToken) {
+                                setTimeout(() => this.loadData(), 500);
+                                return;
+                            }
+                        }
 
-            try {
-                const response = await fetch('/api/staff/verify-and-generate-pin', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        verification_id: currentVerificationId,
-                        verified_by: 'Staff Member'
-                    })
-                });
+                        const data = await response.json();
 
-                const data = await response.json();
+                        if (data.success) {
+                            this.verifiedCustomers = (data.verified || []).map(c => ({
+                                id: c.id,
+                                queueNumber: '#' + c.id,
+                                name: c.customer_name,
+                                partySize: 1,
+                                priorityType: c.priority_display,
+                                status: 'Verified',
+                                verifiedAt: c.verified_at,
+                                verifiedBy: c.verified_by,
+                                idNumber: c.id_number || ''
+                            }));
 
-                if (data.success) {
-                    if (currentCustomerData.priority_type === 'pregnant') {
-                        alert(`Priority assistance provided! ${currentCustomerData.name} has been assisted with priority seating.`);
+                            this.rejectedCustomers = (data.rejected || []).map(c => ({
+                                id: c.id,
+                                queueNumber: '#' + c.id,
+                                name: c.customer_name,
+                                partySize: 1,
+                                priorityType: c.priority_display,
+                                status: 'Rejected',
+                                rejectedAt: c.rejected_at,
+                                rejectionReason: c.rejection_reason,
+                                idNumber: c.id_number || ''
+                            }));
+                        }
+                    } catch (error) {
+                        console.error('Error loading completed verifications:', error);
+                    }
+                },
+
+                setNav(navItem) {
+                    this.activeNav = navItem;
+                },
+
+                selectVerification(verification) {
+                    this.selectedVerification = verification;
+                    this.idNumber = verification.idNumber || '';
+
+                    if (verification.priorityType === 'Pregnant') {
+                        setTimeout(() => this.openVerificationModal(), 100);
+                    }
+                },
+
+                openVerificationModal() {
+                    if (this.selectedVerification) {
+                        this.showVerificationModal = true;
+                        this.idNumber = this.selectedVerification.idNumber || '';
                     } else {
-                        alert(`Verification complete! ${currentCustomerData.name} has been verified with PIN ${data.verification.pin}.`);
+                        alert('Please select a customer first');
                     }
-                    closePINModal();
-                    loadRecentPINs();
-                } else {
-                    alert('Error: ' + data.message);
-                }
-            } catch (error) {
-                console.error('Error confirming PIN:', error);
-                alert('Failed to confirm verification. Please try again.');
-            }
-        }
+                },
 
-        // Reject verification
-        async function rejectVerification() {
-            if (!currentVerificationId) {
-                alert('No verification selected');
-                return;
-            }
+                closeVerificationModal() {
+                    this.showVerificationModal = false;
+                    this.idNumber = '';
+                },
 
-            if (!confirm(`Reject verification for ${currentCustomerData.name}?\n\nThis will mark the verification as failed and the customer will be notified.`)) {
-                return;
-            }
+                async verifyPriority() {
+                    if (!this.selectedVerification) return;
 
-            try {
-                const response = await fetch('/api/staff/reject-verification', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        verification_id: currentVerificationId,
-                        rejected_by: 'Staff Member',
-                        reason: 'ID verification failed'
-                    })
-                });
+                    const isPregnant = this.selectedVerification.priorityType === 'Pregnant';
+                    const hasIdNumber = this.idNumber && this.idNumber.trim() !== '';
 
-                const data = await response.json();
+                    if (isPregnant || hasIdNumber) {
+                        try {
+                            const response = await fetch('/api/verification/complete', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+                                },
+                                credentials: 'same-origin',
+                                body: JSON.stringify({
+                                    verification_id: this.selectedVerification.id,
+                                    verified_by: 'Staff-001',
+                                    id_number: isPregnant ? 'PREGNANT_NO_ID' : this.idNumber
+                                })
+                            });
 
-                if (data.success) {
-                    alert(`Verification rejected for ${currentCustomerData.name}. Customer will be notified of the failure.`);
-                    closePINModal();
-                    loadRecentPINs();
-                } else {
-                    alert('Error: ' + data.message);
-                }
-            } catch (error) {
-                console.error('Error rejecting verification:', error);
-                alert('Failed to reject verification. Please try again.');
-            }
-        }
+                            const data = await response.json();
 
-        // Check for pending requests every 2 seconds
-        async function checkPendingRequests() {
-            try {
-                const response = await fetch('/api/staff/pending-verifications');
-                const data = await response.json();
-                
-                if (data.success && data.has_pending) {
-                    displayPendingVerifications(data.pending_verifications);
-                    
-                    // Auto-open modal for first pending request
-                    if (data.pending_verifications.length > 0 && !document.getElementById('pinModal').classList.contains('hidden')) {
-                        const latestRequest = data.pending_verifications[0];
-                        triggerPINModal(latestRequest.id, latestRequest.customer_name, latestRequest.priority_type);
+                            if (data.success) {
+                                const customerName = this.selectedVerification.name;
+                                this.verifiedCustomers.push(this.selectedVerification);
+                                this.pendingVerifications = this.pendingVerifications.filter(v => v.id !== this.selectedVerification.id);
+                                this.closeVerificationModal();
+                                this.selectedVerification = null;
+                                alert('Priority status verified for ' + customerName + '!');
+                            }
+                        } catch (error) {
+                            console.error('Error:', error);
+                        }
                     }
+                },
+
+                async rejectPriority() {
+                    if (!this.selectedVerification) return;
+
+                    if (!confirm(`Reject verification for ${this.selectedVerification.name}?`)) return;
+
+                    try {
+                        const response = await fetch('/api/verification/reject', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+                            },
+                            credentials: 'same-origin',
+                            body: JSON.stringify({
+                                verification_id: this.selectedVerification.id,
+                                rejected_by: 'Staff-001',
+                                reason: 'Verification failed'
+                            })
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            this.rejectedCustomers.push(this.selectedVerification);
+                            this.pendingVerifications = this.pendingVerifications.filter(v => v.id !== this.selectedVerification.id);
+                            this.closeVerificationModal();
+                            this.selectedVerification = null;
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                    }
+                },
+
+                handleNewRequest(data) {
+                    this.newRequestData = data;
+                    this.showNewRequestAlert = true;
+                },
+
+                dismissNewRequest() {
+                    this.showNewRequestAlert = false;
+                    this.newRequestData = null;
+                },
+
+                goToPriorityScreen() {
+                    this.showNewRequestAlert = false;
+                    this.newRequestData = null;
+                },
+
+                async refreshCSRFToken() {
+                    try {
+                        const response = await fetch('/api/csrf-token');
+                        const data = await response.json();
+                        if (data.csrf_token) {
+                            document.querySelector('meta[name="csrf-token"]')?.setAttribute('content', data.csrf_token);
+                            return data.csrf_token;
+                        }
+                    } catch (error) {
+                        console.error('Error refreshing CSRF token:', error);
+                    }
+                    return null;
                 }
-            } catch (error) {
-                console.error('Error checking pending requests:', error);
             }
         }
 
-        // Initialize
-        document.addEventListener('DOMContentLoaded', function() {
-            loadRecentPINs();
-            setInterval(checkPendingRequests, 2000); // Check every 2 seconds
-        });
+        function goBack() {
+            window.location.href = "/";
+        }
     </script>
 </body>
+
 </html>

@@ -18,6 +18,7 @@ class VerificationController extends Controller
         $validator = Validator::make($request->all(), [
             'customer_name' => 'required|string|max:255',
             'priority_type' => 'required|in:senior,pwd,pregnant',
+            'party_size' => 'nullable|integer|min:1|max:20',
         ]);
 
         if ($validator->fails()) {
@@ -49,6 +50,7 @@ class VerificationController extends Controller
             $verification = PriorityVerification::create([
                 'customer_name' => $request->customer_name,
                 'priority_type' => $request->priority_type,
+                'party_size' => $request->party_size ?? 1, // Include party size from request
                 'status' => 'pending',
                 'requested_at' => now(),
             ]);
@@ -104,7 +106,6 @@ class VerificationController extends Controller
                     'customer_name' => $verification->customer_name,
                     'priority_type' => $verification->priority_type,
                     'status' => $verification->status,
-                    'pin' => $verification->pin,
                     'requested_at' => $verification->requested_at->toISOString(),
                     'verified_at' => $verification->verified_at?->toISOString(),
                 ]
@@ -133,6 +134,13 @@ class VerificationController extends Controller
                 ->orderBy('requested_at', 'asc')
                 ->get()
                 ->map(function ($verification) {
+                    // Get the complete customer data from customers table
+                    $customer = Customer::where('name', $verification->customer_name)
+                        ->where('priority_type', $verification->priority_type)
+                        ->where('status', 'waiting')
+                        ->latest()
+                        ->first();
+                    
                     return [
                         'id' => $verification->id,
                         'customer_name' => $verification->customer_name,
@@ -140,7 +148,14 @@ class VerificationController extends Controller
                         'priority_display' => $verification->priority_display,
                         'status' => $verification->status,
                         'requested_at' => $verification->requested_at->format('M d, Y h:i A'),
-                        'time_elapsed' => now()->diffInMinutes($verification->requested_at)
+                        'time_elapsed' => now()->diffInMinutes($verification->requested_at),
+                        // Add real customer data from registration
+                        'party_size' => $customer ? $customer->party_size : 1,
+                        'queue_number' => $customer ? $customer->queue_number : $verification->id,
+                        'contact_number' => $customer ? $customer->contact_number : '',
+                        'registered_at' => $customer ? $customer->registered_at->format('M d, Y h:i A') : $verification->requested_at->format('M d, Y h:i A'),
+                        'estimated_wait_minutes' => $customer ? $customer->estimated_wait_minutes : 0,
+                        'visit_count' => $customer ? ($customer->created_at->isToday() ? 1 : 2) : 1 // Simple visit count logic
                     ];
                 });
 
@@ -163,113 +178,17 @@ class VerificationController extends Controller
         }
     }
 
-    /**
-     * Verify customer and generate PIN (for staff)
-     */
-    public function verifyAndGeneratePIN(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'verification_id' => 'required|integer|exists:priority_verifications,id',
-            'verified_by' => 'required|string',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        try {
-            $verification = PriorityVerification::find($request->verification_id);
-
-            if (!$verification) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Verification not found'
-                ], 404);
-            }
-
-            if ($verification->status !== 'pending') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Verification has already been processed'
-                ], 400);
-            }
-
-            // Generate PIN (4-digit random number)
-            $pin = str_pad(rand(1000, 9999), 4, '0', STR_PAD_LEFT);
-
-            // Mark as verified
-            $verification->markAsVerified($request->verified_by, $pin);
-
-            // Update the customer record if it exists
-            $customer = Customer::where('name', $verification->customer_name)
-                ->where('priority_type', $verification->priority_type)
-                ->where('status', 'waiting')
-                ->latest()
-                ->first();
-
-            if ($customer) {
-                $customer->update([
-                    'id_verification_status' => 'verified',
-                    'id_verification_data' => [
-                        'verified_by' => $request->verified_by,
-                        'verified_at' => now()->toISOString(),
-                        'pin' => $pin,
-                        'verification_id' => $verification->id
-                    ]
-                ]);
-
-                Log::info('Customer record updated with verification', [
-                    'customer_id' => $customer->id,
-                    'verification_id' => $verification->id
-                ]);
-            }
-
-            Log::info('Priority verification completed', [
-                'verification_id' => $verification->id,
-                'customer_name' => $verification->customer_name,
-                'pin' => $pin,
-                'verified_by' => $request->verified_by
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Verification completed successfully',
-                'verification' => [
-                    'id' => $verification->id,
-                    'customer_name' => $verification->customer_name,
-                    'priority_type' => $verification->priority_type,
-                    'pin' => $pin,
-                    'status' => 'verified',
-                    'verified_at' => $verification->verified_at->toISOString(),
-                    'verified_by' => $verification->verified_by
-                ]
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Failed to verify and generate PIN', [
-                'verification_id' => $request->verification_id,
-                'error' => $e->getMessage()
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to complete verification. Please try again.'
-            ], 500);
-        }
-    }
 
     /**
      * Reject verification (for staff)
      */
     public function rejectVerification(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'verification_id' => 'required|integer|exists:priority_verifications,id',
+        $validator = Validator::make($request->json()->all(), [
+            'verification_id' => 'required|integer|exists:verifications,id',
             'rejected_by' => 'required|string',
             'reason' => 'nullable|string|max:500',
+            'id_number' => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
@@ -280,7 +199,7 @@ class VerificationController extends Controller
         }
 
         try {
-            $verification = PriorityVerification::find($request->verification_id);
+            $verification = PriorityVerification::find($request->json('verification_id'));
 
             if (!$verification) {
                 return response()->json([
@@ -300,8 +219,9 @@ class VerificationController extends Controller
             $verification->update([
                 'status' => 'rejected',
                 'verified_at' => now(),
-                'verified_by' => $request->rejected_by,
-                'rejection_reason' => $request->reason ?? 'ID verification failed'
+                'verified_by' => $request->json('rejected_by'),
+                'rejection_reason' => $request->json('reason') ?? 'ID verification failed',
+                'id_number' => $request->json('id_number')
             ]);
 
             // Update the customer record if it exists
@@ -315,10 +235,11 @@ class VerificationController extends Controller
                 $customer->update([
                     'id_verification_status' => 'rejected',
                     'id_verification_data' => [
-                        'rejected_by' => $request->rejected_by,
+                        'rejected_by' => $request->json('rejected_by'),
                         'rejected_at' => now()->toISOString(),
-                        'reason' => $request->reason ?? 'ID verification failed',
-                        'verification_id' => $verification->id
+                        'reason' => $request->json('reason') ?? 'ID verification failed',
+                        'verification_id' => $verification->id,
+                        'id_number' => $request->json('id_number')
                     ]
                 ]);
 
@@ -331,8 +252,9 @@ class VerificationController extends Controller
             Log::info('Priority verification rejected', [
                 'verification_id' => $verification->id,
                 'customer_name' => $verification->customer_name,
-                'rejected_by' => $request->rejected_by,
-                'reason' => $request->reason
+                'rejected_by' => $request->json('rejected_by'),
+                'reason' => $request->json('reason'),
+                'id_number' => $request->json('id_number')
             ]);
 
             return response()->json([
@@ -342,22 +264,181 @@ class VerificationController extends Controller
                     'id' => $verification->id,
                     'customer_name' => $verification->customer_name,
                     'priority_type' => $verification->priority_type,
+                    'priority_display' => $verification->priority_display,
                     'status' => 'rejected',
                     'rejected_at' => $verification->verified_at->toISOString(),
                     'rejected_by' => $verification->verified_by,
-                    'reason' => $verification->rejection_reason
+                    'reason' => $verification->rejection_reason,
+                    'id_number' => $verification->id_number
                 ]
             ]);
 
         } catch (\Exception $e) {
             Log::error('Failed to reject verification', [
-                'verification_id' => $request->verification_id,
+                'verification_id' => $request->json('verification_id'),
                 'error' => $e->getMessage()
             ]);
 
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to reject verification. Please try again.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Complete verification (approve priority status)
+     */
+    public function completeVerification(Request $request)
+    {
+        $validator = Validator::make($request->json()->all(), [
+            'verification_id' => 'required|integer|exists:verifications,id',
+            'verified_by' => 'required|string|max:255',
+            'id_number' => 'nullable|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $verification = PriorityVerification::findOrFail($request->json('verification_id'));
+
+            if ($verification->status !== 'pending') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Verification is not pending'
+                ], 400);
+            }
+
+            // Mark as verified
+            $verification->markAsVerified($request->json('verified_by'), $request->json('id_number'));
+
+            // Update customer priority status if needed
+            if ($verification->queue_customer_id && !empty($verification->queue_customer_id)) {
+                $customer = Customer::find($verification->queue_customer_id);
+                if ($customer) {
+                    $customer->update([
+                        'priority_type' => $verification->priority_type,
+                        'priority_applied_at' => now(),
+                        'has_priority_member' => true,
+                    ]);
+                    
+                    Log::info('Customer priority updated', [
+                        'customer_id' => $customer->id,
+                        'customer_name' => $customer->name,
+                        'priority_type' => $customer->priority_type
+                    ]);
+                } else {
+                    Log::warning('Customer not found for verification', [
+                        'verification_id' => $verification->id,
+                        'queue_customer_id' => $verification->queue_customer_id,
+                        'customer_name' => $verification->customer_name
+                    ]);
+                }
+            } else {
+                Log::info('Verification completed without customer update (no queue_customer_id)', [
+                    'verification_id' => $verification->id,
+                    'customer_name' => $verification->customer_name,
+                    'reason' => 'queue_customer_id is empty or null'
+                ]);
+            }
+
+            Log::info('Priority verification completed', [
+                'verification_id' => $verification->id,
+                'verified_by' => $request->json('verified_by'),
+                'priority_type' => $verification->priority_type
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Priority status verified successfully',
+                'verification' => [
+                    'id' => $verification->id,
+                    'status' => $verification->status,
+                    'priority_type' => $verification->priority_type,
+                    'verified_at' => $verification->verified_at->toISOString(),
+                    'verified_by' => $verification->verified_by
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to complete verification', [
+                'verification_id' => $request->json('verification_id'),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to complete verification. Please try again.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Get completed verifications for a specific date
+     */
+    public function getCompletedVerifications(Request $request)
+    {
+        try {
+            $date = $request->get('date', now()->toDateString());
+            
+            $verified = PriorityVerification::where('status', 'verified')
+                ->whereDate('verified_at', $date)
+                ->orderBy('verified_at', 'desc')
+                ->get()
+                ->map(function ($verification) {
+                    return [
+                        'id' => $verification->id,
+                        'customer_name' => $verification->customer_name,
+                        'priority_type' => $verification->priority_type,
+                        'priority_display' => $verification->priority_display,
+                        'status' => $verification->status,
+                        'verified_at' => $verification->verified_at->format('h:i A'),
+                        'verified_by' => $verification->verified_by,
+                        'id_number' => $verification->id_number ?? ''
+                    ];
+                });
+
+            $rejected = PriorityVerification::where('status', 'rejected')
+                ->whereDate('verified_at', $date)
+                ->orderBy('verified_at', 'desc')
+                ->get()
+                ->map(function ($verification) {
+                    return [
+                        'id' => $verification->id,
+                        'customer_name' => $verification->customer_name,
+                        'priority_type' => $verification->priority_type,
+                        'priority_display' => $verification->priority_display,
+                        'status' => $verification->status,
+                        'rejected_at' => $verification->verified_at->format('h:i A'),
+                        'rejected_by' => $verification->verified_by,
+                        'rejection_reason' => $verification->rejection_reason,
+                        'id_number' => $verification->id_number ?? ''
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'verified' => $verified,
+                'rejected' => $rejected,
+                'date' => $date
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to get completed verifications', [
+                'error' => $e->getMessage(),
+                'date' => $request->get('date')
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load completed verifications'
             ], 500);
         }
     }

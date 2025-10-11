@@ -23,8 +23,8 @@ class CleanSlate extends Command
         
         // Truncate customer-related tables
         DB::table('customers')->truncate();
-        DB::table('queue_events')->truncate();
-        DB::table('priority_verifications')->truncate();
+        DB::table('events')->truncate();
+        DB::table('verifications')->truncate();
         DB::table('id_verifications')->truncate();
         
         DB::statement('SET FOREIGN_KEY_CHECKS=1');

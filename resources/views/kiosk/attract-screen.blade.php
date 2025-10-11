@@ -160,7 +160,7 @@
         <div class="flex justify-between items-center">
             <!-- Logo -->
             <div class="animate-fade-in delay-100">
-                <img src="/images/gervacios-logo.png" alt="Gervacio's Logo" class="h-32 w-auto drop-shadow-2xl filter brightness-110">
+                <img src="/images/gervacios-logo.png" alt="Gervacio's Logo" class="h-40 w-auto drop-shadow-2xl filter brightness-110">
             </div>
 
             <!-- Date and Time -->
@@ -221,7 +221,6 @@
                         class="group bg-cream-button hover:bg-white text-primary font-bold py-5 px-16 rounded-xl transition-all duration-300 flex items-center justify-center gap-4 text-2xl shadow-2xl hover:shadow-3xl transform hover:scale-105 mx-auto animate-float cursor-pointer pointer-events-auto">
                     <i class="fa-solid fa-chair text-3xl group-hover:rotate-12 transition-transform duration-300"></i>
                     <span>Tap to Get a Seat</span>
-                    <i class="fa-solid fa-arrow-right text-2xl group-hover:translate-x-2 transition-transform duration-300"></i>
                 </button>
             </div>
 
@@ -252,6 +251,27 @@
                 </div>
             </div>
 
+
+        </div>
+    </div>
+
+    <!-- Closed State Overlay -->
+    <div id="closedOverlay" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-2xl mx-4 p-12 text-center">
+            <div class="inline-flex items-center justify-center w-32 h-32 rounded-full bg-red-100 mb-6">
+                <i class="fas fa-moon text-red-600 text-6xl"></i>
+            </div>
+            <h2 class="text-4xl font-bold text-gray-900 mb-4">We're Currently Closed</h2>
+            <p class="text-xl text-gray-600 mb-8">Thank you for visiting Café Gervacios!</p>
+            
+            <div class="bg-gray-50 border-2 border-gray-200 rounded-xl p-6 mb-6">
+                <p class="text-lg font-semibold text-gray-900 mb-3">Our Hours:</p>
+                <div class="space-y-2 text-left max-w-md mx-auto" id="weeklyHours">
+                    <!-- Hours will be populated by JavaScript -->
+                </div>
+            </div>
+            
+            <p class="text-gray-600">See you soon!</p>
         </div>
     </div>
 
@@ -468,6 +488,78 @@
         
         // Start auto-refresh
         startAutoRefresh();
+
+
+        async function checkStoreStatus() {
+            try {
+                const response = await fetch('/api/settings/is-open');
+                const data = await response.json();
+                
+                if (!data.is_open) {
+                    // Show closed overlay
+                    document.getElementById('closedOverlay').classList.remove('hidden');
+                    
+                    // Disable the "Tap to Get a Seat" button
+                    const ctaButton = document.querySelector('[onclick="showTermsModal()"]');
+                    if (ctaButton) {
+                        ctaButton.disabled = true;
+                        ctaButton.classList.add('opacity-50', 'cursor-not-allowed');
+                        ctaButton.onclick = null;
+                    }
+                }
+                
+                // Load weekly hours for closed overlay
+                loadWeeklyHours();
+            } catch (error) {
+                console.error('Failed to check store status:', error);
+            }
+        }
+
+        function formatTime(time24) {
+            const [hours, minutes] = time24.split(':');
+            const hour = parseInt(hours);
+            const ampm = hour >= 12 ? 'PM' : 'AM';
+            const hour12 = hour % 12 || 12;
+            return `${hour12}:${minutes} ${ampm}`;
+        }
+
+        function loadWeeklyHours() {
+            fetch('/api/settings/store-hours')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const weeklyHoursDiv = document.getElementById('weeklyHours');
+                        const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+                        
+                        days.forEach(day => {
+                            const dayHours = data.hours[day];
+                            const dayDiv = document.createElement('div');
+                            dayDiv.className = 'flex justify-between items-center py-1';
+                            
+                            const dayName = day.charAt(0).toUpperCase() + day.slice(1);
+                            if (dayHours && !dayHours.is_closed) {
+                                const open = formatTime(dayHours.open);
+                                const close = formatTime(dayHours.close);
+                                dayDiv.innerHTML = `<span class="font-medium">${dayName}</span><span>${open} - ${close}</span>`;
+                            } else {
+                                dayDiv.innerHTML = `<span class="font-medium">${dayName}</span><span class="text-red-600">Closed</span>`;
+                            }
+                            
+                            weeklyHoursDiv.appendChild(dayDiv);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Failed to load weekly hours:', error);
+                });
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            updateTimeAndDate();
+            setInterval(updateTimeAndDate, 1000);
+            checkStoreStatus();
+        });
     </script>
     
     <!-- Session Timeout Modal Manager -->
