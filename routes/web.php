@@ -2,155 +2,127 @@
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
+use App\Http\Controllers\{
+    RegistrationController,
+    TermsConsentController,
+    AnalyticsController,
+    VerificationController,
+    ApiController,
+    TableSuggestionController,
+    SettingsController
+};
 
-Route::get('/', function () {
-    return view('kiosk.attract-screen');
-})->name('kiosk.attract');
+/*
+|--------------------------------------------------------------------------
+| Web Routes - Cleaned & Organized
+|--------------------------------------------------------------------------
+*/
 
-// Terms & Conditions Routes
-Route::post('/kiosk/terms/accept', [\App\Http\Controllers\TermsConsentController::class, 'accept'])->name('kiosk.terms.accept');
-Route::post('/kiosk/terms/decline', [\App\Http\Controllers\TermsConsentController::class, 'decline'])->name('kiosk.terms.decline');
+// Root - Kiosk Attract Screen
+Route::get('/', fn() => view('kiosk.attract-screen'))->name('kiosk.attract');
 
-// Table Suggestion API Routes
-Route::get('/api/kiosk/table-suggestions', [\App\Http\Controllers\TableSuggestionController::class, 'getSuggestions'])->name('api.table-suggestions');
-Route::post('/api/kiosk/reserve-table/{tableId}', [\App\Http\Controllers\TableSuggestionController::class, 'reserveTable'])->name('api.reserve-table');
-Route::get('/api/tables/status', [\App\Http\Controllers\TableSuggestionController::class, 'getTableStatus'])->name('api.tables-status');
+/*
+|--------------------------------------------------------------------------
+| Kiosk Routes (Customer-Facing)
+|--------------------------------------------------------------------------
+*/
+Route::prefix('kiosk')->name('kiosk.')->group(function () {
+    // Terms & Conditions
+    Route::post('/terms/accept', [TermsConsentController::class, 'accept'])->name('terms.accept');
+    Route::post('/terms/decline', [TermsConsentController::class, 'decline'])->name('terms.decline');
 
-// Settings API Routes
-Route::get('/api/settings/public', [\App\Http\Controllers\SettingsController::class, 'getPublicSettings'])->name('api.settings.public');
-Route::post('/api/admin/settings/update', [\App\Http\Controllers\SettingsController::class, 'updateSettings'])->name('api.admin.settings.update');
+    // Registration Flow
+    Route::get('/registration', [RegistrationController::class, 'show'])->name('registration');
+    Route::post('/registration', [RegistrationController::class, 'store'])->name('registration.store');
+    Route::post('/registration/confirm', [RegistrationController::class, 'confirm'])->name('registration.confirm');
+    Route::post('/registration/cancel', [RegistrationController::class, 'cancel'])->name('registration.cancel');
+    Route::post('/check-duplicate-contact', [RegistrationController::class, 'checkDuplicateContact'])->name('check-duplicate-contact');
 
-// Admin Settings Page
-Route::get('/admin/settings', function () {
-    return view('admin.settings');
-})->name('admin.settings');
+    // Review & Verification
+    Route::get('/review-details', [RegistrationController::class, 'reviewDetails'])->name('review-details');
+    Route::post('/review-details/update', [RegistrationController::class, 'updateReviewDetails'])->name('review-details.update');
+    Route::post('/id-verify', [RegistrationController::class, 'verifyId'])->name('id-verify');
+    Route::get('/check-verification-status', [RegistrationController::class, 'checkVerificationStatus'])->name('check-verification-status');
+    Route::post('/update-verification-session', [RegistrationController::class, 'updateVerificationSession'])->name('update-verification-session');
 
-Route::get('/kiosk/guest-info', [\App\Http\Controllers\KioskController::class, 'guestInfo'])->name('kiosk.guest-info');
-Route::post('/kiosk/guest-info', [\App\Http\Controllers\KioskController::class, 'storeGuestInfo'])->name('kiosk.store-guest-info');
-Route::get('/kiosk/registration', [\App\Http\Controllers\RegistrationController::class, 'show'])->name('kiosk.registration');
-Route::post('/kiosk/registration', [\App\Http\Controllers\RegistrationController::class, 'store'])->name('kiosk.registration.store');
-Route::get('/kiosk/review-details', [\App\Http\Controllers\RegistrationController::class, 'reviewDetails'])->name('kiosk.review-details');
-Route::post('/kiosk/review-details/update', [\App\Http\Controllers\RegistrationController::class, 'updateReviewDetails'])->name('kiosk.review-details.update');
-Route::post('/kiosk/id-verify', [\App\Http\Controllers\RegistrationController::class, 'verifyId'])->name('kiosk.id-verify');
-Route::post('/kiosk/registration/confirm', [\App\Http\Controllers\RegistrationController::class, 'confirm'])->name('kiosk.registration.confirm');
-Route::post('/kiosk/registration/cancel', [\App\Http\Controllers\RegistrationController::class, 'cancel'])->name('kiosk.registration.cancel');
-Route::get('/kiosk/check-verification-status', [\App\Http\Controllers\RegistrationController::class, 'checkVerificationStatus'])->name('kiosk.check-verification-status');
-Route::post('/kiosk/update-verification-session', [\App\Http\Controllers\RegistrationController::class, 'updateVerificationSession'])->name('kiosk.update-verification-session');
-Route::get('/kiosk/receipt/{customerId}', function ($customerId) {
-    $customer = \App\Models\Customer::findOrFail($customerId);
-    return view('kiosk.receipt', [
-        'customer' => $customer
-    ]);
-})->name('kiosk.receipt');
+    // Receipt
+    Route::get('/receipt/{customerId}', fn($customerId) => view('kiosk.receipt', [
+        'customer' => \App\Models\Customer::findOrFail($customerId)
+    ]))->name('receipt');
 
-Route::get('/kiosk/staffverification', function () {
-    return view('kiosk.staffverification');
-})->name('kiosk.staffverification');
+    // Staff & Displays
+    Route::get('/staffverification', fn() => view('kiosk.staffverification'))->name('staffverification');
+    Route::get('/queue-summary', fn() => view('kiosk.queue-summary'))->name('queue-summary');
+    Route::get('/staff-assistance', fn(Request $req) => view('kiosk.staff-assistance', [
+        'requestId' => $req->get('request_id'),
+        'issueType' => $req->get('issue'),
+        'priorityType' => $req->get('priority_type')
+    ]))->name('staff-assistance');
 
-// Staff Analytics Routes
-Route::prefix('staff')->group(function () {
-    Route::get('/analytics/dashboard', [\App\Http\Controllers\AnalyticsController::class, 'dashboard'])->name('staff.analytics.dashboard');
-    Route::get('/analytics/export/today', [\App\Http\Controllers\AnalyticsController::class, 'exportToday'])->name('staff.analytics.export.today');
+    // Utility Views
+    Route::get('/session-timeout', fn() => view('kiosk.session-timeout'))->name('session-timeout');
 });
 
-// CSRF token route for AJAX requests
-Route::get('/api/csrf-token', function() {
-    return response()->json([
-        'csrf_token' => csrf_token()
-    ]);
-})->name('api.csrf-token');
-
-Route::get('/kiosk/webcam-config', function () {
-    return response()->json(['webcam_available' => false]);
+/*
+|--------------------------------------------------------------------------
+| Admin & Staff Routes
+|--------------------------------------------------------------------------
+*/
+Route::prefix('admin')->name('admin.')->group(function () {
+    Route::get('/settings', fn() => view('admin.settings'))->name('settings');
+    Route::get('/priority-pin-dashboard', fn() => view('admin.priority-pin-dashboard'))->name('priority-pin-dashboard');
 });
-Route::get('/kiosk/demo-qr', function () {
-    return view('kiosk.demo-qr-generator');
-})->name('kiosk.demo-qr');
 
-Route::get('/kiosk/session-timeout', function () {
-    return view('kiosk.session-timeout');
-})->name('kiosk.session-timeout');
+Route::prefix('staff')->name('staff.')->group(function () {
+    Route::get('/analytics/dashboard', [AnalyticsController::class, 'dashboard'])->name('analytics.dashboard');
+    Route::get('/analytics/export/today', [AnalyticsController::class, 'exportToday'])->name('analytics.export.today');
+});
 
-Route::get('/kiosk/test-timeout', function () {
-    return view('kiosk.test-timeout');
-})->name('kiosk.test-timeout');
+/*
+|--------------------------------------------------------------------------
+| API Routes (Internal - Move to api.php later)
+|--------------------------------------------------------------------------
+*/
+Route::prefix('api')->name('api.')->middleware('rate.limit.api:120,1')->group(function () {
+    // Queue Management
+    Route::prefix('queue')->name('queue.')->group(function () {
+        Route::get('/stats', [ApiController::class, 'getQueueStats'])->name('stats');
+        Route::get('/summary', [ApiController::class, 'getQueueSummary'])->name('summary');
+        Route::get('/update', [ApiController::class, 'getQueueUpdate'])->name('update');
+        Route::post('/update-wait-times', [RegistrationController::class, 'updateAllWaitTimes'])->name('update-wait-times');
+    });
 
+    // Customer Info
+    Route::prefix('customer')->name('customer.')->group(function () {
+        Route::get('/{customerId}/current-wait', [ApiController::class, 'getCurrentWait'])->name('current-wait');
+        Route::get('/{queueNumber}/position', [ApiController::class, 'getPosition'])->name('position');
+        Route::post('/request-verification', [VerificationController::class, 'requestVerification'])->name('request-verification');
+        Route::get('/verification-status/{id}', [VerificationController::class, 'checkVerificationStatus'])->name('verification-status');
+    });
 
-Route::get('/kiosk/staff-assistance', function (Request $request) {
-    return view('kiosk.staff-assistance', [
-        'requestId' => $request->get('request_id'),
-        'issueType' => $request->get('issue'),
-        'priorityType' => $request->get('priority_type')
-    ]);
-})->name('kiosk.staff-assistance');
+    // Verification
+    Route::prefix('verification')->name('verification.')->group(function () {
+        Route::get('/pending', [VerificationController::class, 'getPendingVerifications'])->name('pending');
+        Route::get('/completed', [VerificationController::class, 'getCompletedVerifications'])->name('completed');
+        Route::post('/complete', [VerificationController::class, 'completeVerification'])->name('complete');
+        Route::post('/reject', [VerificationController::class, 'rejectVerification'])->name('reject');
+    });
 
-Route::get('/kiosk/queue-summary', function () {
-    return view('kiosk.queue-summary');
-})->name('kiosk.queue-summary');
+    // Tables
+    Route::prefix('tables')->name('tables.')->group(function () {
+        Route::get('/status', [TableSuggestionController::class, 'getTableStatus'])->name('status');
+        Route::get('/suggestions', [TableSuggestionController::class, 'getSuggestions'])->name('suggestions');
+        Route::post('/{tableId}/reserve', [TableSuggestionController::class, 'reserveTable'])->name('reserve');
+    });
 
-// Dynamic queue management routes
-Route::post('/api/queue/update-wait-times', [\App\Http\Controllers\RegistrationController::class, 'updateAllWaitTimes'])->name('api.queue.update-wait-times');
-Route::get('/api/queue/stats', [\App\Http\Controllers\RegistrationController::class, 'getQueueStats'])->name('api.queue.stats');
-Route::get('/api/customer/{queueNumber}/position', [\App\Http\Controllers\ApiController::class, 'getPosition'])->name('api.customer.position');
-Route::get('/api/queue/summary', [\App\Http\Controllers\ApiController::class, 'getQueueSummary'])->name('api.queue.summary');
+    // Settings
+    Route::prefix('settings')->name('settings.')->group(function () {
+        Route::get('/public', [SettingsController::class, 'getPublicSettings'])->name('public');
+        Route::post('/update', [SettingsController::class, 'updateSettings'])->name('update');
+    });
 
-// Real-time queue endpoints using customer ID
-Route::get('/api/customer/{customerId}/current-wait', [\App\Http\Controllers\ApiController::class, 'getCurrentWait'])->name('api.customer.current-wait');
-Route::get('/api/current-wait-time', [\App\Http\Controllers\ApiController::class, 'getCurrentWaitTime'])->name('api.current-wait-time');
-Route::get('/api/queue/update', [\App\Http\Controllers\ApiController::class, 'getQueueUpdate'])->name('api.queue.update');
-
-Route::get('/kiosk/debug-test', function () {
-    return view('kiosk.debug-test');
-})->name('kiosk.debug-test');
-
-Route::post('/kiosk/check-duplicate-contact', [\App\Http\Controllers\RegistrationController::class, 'checkDuplicateContact'])->name('kiosk.check-duplicate-contact');
-// ID Scanner and DroidCam routes
-Route::get('/kiosk/droidcam/status', function () {
-    return response()->json(['status' => 'unavailable']);
-})->name('kiosk.droidcam.status');
-
-Route::post('/kiosk/droidcam/capture-image', function () {
-    return response()->json(['success' => false, 'message' => 'Feature not available']);
-})->name('kiosk.droidcam.capture-image');
-
-Route::post('/kiosk/droidcam/capture-and-ocr', function () {
-    return response()->json(['success' => false, 'message' => 'Feature not available']);
-})->name('kiosk.droidcam.capture-and-ocr');
-
-Route::post('/kiosk/verify-id-name', function () {
-    return response()->json(['success' => false, 'message' => 'Feature not available']);
-})->name('kiosk.verify-id-name');
-
-Route::post('/kiosk/request-staff-assistance', function () {
-    return response()->json(['success' => false, 'message' => 'Feature not available']);
-})->name('kiosk.request-staff-assistance');
-
-Route::get('/kiosk/id-mismatch', function () {
-    return view('kiosk.id-mismatch');
-})->name('kiosk.id-mismatch');
-Route::get('/kiosk/ocr-test', function () {
-    return view('kiosk.ocr-test');
-})->name('kiosk.ocr-test');
-Route::get('/kiosk/camera-scanner', function () {
-    return view('kiosk.camera-scanner');
-})->name('kiosk.camera-scanner');
-
-
-// Staff Dashboard
-Route::get('/admin/priority-pin-dashboard', function () {
-    return view('admin.priority-pin-dashboard');
-})->name('admin.priority-pin-dashboard');
-
-// Priority Verification API Routes
-Route::post('/api/customer/request-verification', [\App\Http\Controllers\VerificationController::class, 'requestVerification'])->name('api.verification.request');
-Route::get('/api/customer/verification-status/{id}', [\App\Http\Controllers\VerificationController::class, 'checkVerificationStatus'])->name('api.verification.status');
-Route::get('/api/verification/pending', [\App\Http\Controllers\VerificationController::class, 'getPendingVerifications'])->name('api.verification.pending');
-Route::post('/api/verification/complete', [\App\Http\Controllers\VerificationController::class, 'completeVerification'])->name('api.verification.complete');
-Route::post('/api/verification/reject', [\App\Http\Controllers\VerificationController::class, 'rejectVerification'])->name('api.verification.reject');
-Route::get('/api/verification/completed', [\App\Http\Controllers\VerificationController::class, 'getCompletedVerifications'])->name('api.verification.completed');
-
-// CSRF Token Route
-Route::get('/api/csrf-token', function () {
-    return response()->json(['csrf_token' => csrf_token()]);
-})->name('api.csrf-token');
+    // Utility
+    Route::get('/csrf-token', fn() => response()->json(['csrf_token' => csrf_token()]))->name('csrf-token');
+    Route::get('/current-wait-time', [ApiController::class, 'getCurrentWaitTime'])->name('current-wait-time');
+});
 

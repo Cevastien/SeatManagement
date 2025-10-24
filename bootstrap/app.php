@@ -16,6 +16,11 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\VerifyCsrfToken::class,
             \App\Http\Middleware\SecurityHeaders::class,
         ]);
+
+        // Register custom middleware aliases
+        $middleware->alias([
+            'rate.limit.api' => \App\Http\Middleware\RateLimitApi::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
