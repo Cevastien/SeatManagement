@@ -51,6 +51,11 @@ class StoreRegistrationRequest extends FormRequest
                 'nullable',
                 'in:0,1',
             ],
+            'special_requests' => [
+                'nullable',
+                'string',
+                'max:500',
+            ],
         ];
     }
 
@@ -77,6 +82,8 @@ class StoreRegistrationRequest extends FormRequest
 
             'priority_type.required_if' => 'Please select a priority type',
             'priority_type.in' => 'Invalid priority type selected',
+
+            'special_requests.max' => 'Special requests cannot exceed 500 characters',
         ];
     }
 

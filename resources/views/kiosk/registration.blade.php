@@ -153,6 +153,20 @@
                     <p class="text-base text-gray-600 mt-3">We'll use this to notify you when your turn is ready</p>
                 </div>
 
+                <!-- Special Requests / Notes -->
+                <div>
+                    <h3 class="text-2xl font-bold text-secondary mb-4">Special Requests (Optional)</h3>
+                    <textarea id="special_requests" name="special_requests"
+                              rows="3"
+                              placeholder="Any special requests? (dietary needs, seating preferences, accessibility, etc.)"
+                              class="w-full px-6 py-5 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none text-xl bg-white resize-none"
+                              maxlength="500">{{ $editField && $existingData ? ($existingData['special_requests'] ?? '') : '' }}</textarea>
+                    <div class="flex justify-between items-center mt-3">
+                        <p class="text-base text-gray-600">Let us know if you have any special needs or preferences</p>
+                        <p class="text-sm text-gray-500"><span id="charCount">0</span>/500</p>
+                    </div>
+                </div>
+
                 <!-- Priority Check (Placeholder Space) -->
                 <div id="prioritySection" class="priority-section hide">
                     <div>
@@ -278,19 +292,35 @@
             restaurant_name: 'GERVACIOS RESTAURANT & LOUNGE'
         };
 
+        // Character counter for special requests
+        document.addEventListener('DOMContentLoaded', function() {
+            const textarea = document.getElementById('special_requests');
+            const charCount = document.getElementById('charCount');
+
+            if (textarea && charCount) {
+                // Update count on page load
+                charCount.textContent = textarea.value.length;
+
+                // Update count on input
+                textarea.addEventListener('input', function() {
+                    charCount.textContent = this.value.length;
+                });
+            }
+        });
+
         // Enhanced step indicator with progress bar
         class StepIndicator {
             constructor() {
                 this.currentStep = 1;
                 this.totalSteps = 3;
             }
-            
+
             updateStep(step, isPriority = false) {
                 this.currentStep = step;
                 this.totalSteps = isPriority ? 4 : 3;
-                
+
                 const indicator = document.getElementById('stepIndicator');
-                
+
                 if (indicator) {
                     indicator.textContent = `Step ${step} of ${this.totalSteps}`;
                 }
