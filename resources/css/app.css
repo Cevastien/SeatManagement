@@ -1,4 +1,5 @@
-/* Import kiosk-specific styles */
+/* Import design system and kiosk-specific styles */
+@import './design-system.css';
 @import './kiosk.css';
 
 /* Fix for webkit-text-size-adjust compatibility */
