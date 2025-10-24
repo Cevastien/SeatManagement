@@ -226,9 +226,14 @@
 
             <!-- Footer Text -->
             <div class="animate-fade-in delay-500">
-                <p class="text-white/90 text-xl leading-relaxed max-w-3xl mx-auto">
+                <p class="text-white/90 text-xl leading-relaxed max-w-3xl mx-auto mb-4">
                     Register your party → Get queue number → Wait for notification → Be seated
                 </p>
+                <!-- Contact Information -->
+                <div class="text-white/70 text-base mt-6">
+                    <p>Need assistance? Contact our staff or call</p>
+                    <p class="font-bold text-white text-lg mt-1">(082) 123-4567</p>
+                </div>
             </div>
 
             <!-- Stats Row -->
@@ -292,8 +297,8 @@
             <div class="flex-1 overflow-y-auto px-8 py-6 space-y-6">
                 <!-- Introduction -->
                 <div class="text-center">
-                    <p class="text-gray-700 text-base">
-                        By proceeding, you agree to our <span class="text-red-600 font-semibold">Terms &
+                    <p class="text-gray-700 text-base leading-relaxed">
+                        By proceeding, you agree to our <span class="text-primary-950 font-bold">Terms &
                             Conditions</span> and Data Privacy Policy.
                     </p>
                 </div>
@@ -542,7 +547,7 @@
                                 const close = formatTime(dayHours.close);
                                 dayDiv.innerHTML = `<span class="font-medium">${dayName}</span><span>${open} - ${close}</span>`;
                             } else {
-                                dayDiv.innerHTML = `<span class="font-medium">${dayName}</span><span class="text-red-600">Closed</span>`;
+                                dayDiv.innerHTML = `<span class="font-medium">${dayName}</span><span class="text-gray-600 font-medium">Closed</span>`;
                             }
                             
                             weeklyHoursDiv.appendChild(dayDiv);

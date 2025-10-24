@@ -17,24 +17,44 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['Inter', 'Figtree', ...defaultTheme.fontFamily.sans],
+                sans: ['Inter', ...defaultTheme.fontFamily.sans],
                 inter: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'Noto Sans', 'sans-serif'],
+                heading: ['Inter', 'sans-serif'],
+                body: ['Inter', 'sans-serif'],
             },
             colors: {
+                // Brand Colors
                 primary: {
-                    DEFAULT: '#b5e4ff',
-                    50: '#f0faff',
-                    100: '#b5e4ff',
-                    200: '#a8dcfa',
-                    300: '#94d0f2',
-                    400: '#6ab9e6',
-                    500: '#3f9fd8',
-                    600: '#0082cd',
-                    700: '#006eb1',
-                    800: '#005a95',
-                    900: '#004a7a',
-                    950: '#003a61',
+                    DEFAULT: '#09121E',
+                    light: '#1a2332',
+                    dark: '#000814',
+                    50: '#f5f7fa',
+                    100: '#ebeef3',
+                    200: '#d3dae5',
+                    300: '#adb9cd',
+                    400: '#8093b0',
+                    500: '#5f7496',
+                    600: '#4a5b7d',
+                    700: '#3c4a65',
+                    800: '#343f55',
+                    900: '#2f3749',
+                    950: '#09121E',
                 },
+                // Accent Colors
+                accent: {
+                    DEFAULT: '#EEEDE7',
+                    cream: '#EEEDE7',
+                    yellow: '#FDB813',
+                    orange: '#F59E0B',
+                },
+                // Status Colors (replacing red)
+                status: {
+                    success: '#10B981',
+                    warning: '#F59E0B',
+                    danger: '#DC2626',
+                    info: '#3B82F6',
+                },
+                // UI Colors
                 kiosk: {
                     dark: '#111827',
                     light: '#E6E6E6',
