@@ -1,0 +1,884 @@
+{
+  "info": {
+    "name": "Café Gervacio's - Seat Management API",
+    "description": "Complete API documentation for the Seat Management System. This collection includes all endpoints for queue management, customer registration, priority verification, table management, and analytics.\n\n**Base URL:** `{{base_url}}`\n\n**Rate Limiting:** 120 requests per minute\n\n**Authentication:** CSRF token required for POST requests\n\n**Version:** 1.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "csrf_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "customer_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "queue_number",
+      "value": "001",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Utility",
+      "item": [
+        {
+          "name": "Get CSRF Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has csrf_token\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('csrf_token');",
+                  "    pm.collectionVariables.set(\"csrf_token\", jsonData.csrf_token);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/csrf-token",
+              "host": ["{{base_url}}"],
+              "path": ["api", "csrf-token"]
+            },
+            "description": "Retrieves a CSRF token for subsequent POST requests. The token is automatically saved to collection variables."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/csrf-token",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "csrf-token"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n    \"csrf_token\": \"eyJpdiI6ImR3TnRXL...\"\n}"
+            }
+          ]
+        }
+      ],
+      "description": "Utility endpoints for system information and CSRF tokens"
+    },
+    {
+      "name": "Queue Management",
+      "item": [
+        {
+          "name": "Get Queue Statistics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/queue/stats",
+              "host": ["{{base_url}}"],
+              "path": ["api", "queue", "stats"]
+            },
+            "description": "Returns current queue statistics including total customers waiting, average wait time, and queue length by priority type."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/queue/stats",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "queue", "stats"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n    \"success\": true,\n    \"data\": {\n        \"total_waiting\": 12,\n        \"total_called\": 3,\n        \"total_seated\": 5,\n        \"average_wait_time\": 25,\n        \"priority_counts\": {\n            \"normal\": 8,\n            \"senior\": 2,\n            \"pwd\": 1,\n            \"pregnant\": 1\n        },\n        \"estimated_wait_time\": 30\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Queue Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/queue/summary",
+              "host": ["{{base_url}}"],
+              "path": ["api", "queue", "summary"]
+            },
+            "description": "Returns a summary of the current queue for public display boards. Includes currently waiting customers and next customers to be called."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/queue/summary",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "queue", "summary"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n    \"success\": true,\n    \"data\": {\n        \"waiting\": [\n            {\n                \"queue_number\": \"001\",\n                \"party_size\": 4,\n                \"estimated_wait\": 15,\n                \"is_priority\": true\n            },\n            {\n                \"queue_number\": \"002\",\n                \"party_size\": 2,\n                \"estimated_wait\": 20,\n                \"is_priority\": false\n            }\n        ],\n        \"next_up\": [\n            {\n                \"queue_number\": \"003\",\n                \"party_size\": 3\n            }\n        ]\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Queue Update",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/queue/update",
+              "host": ["{{base_url}}"],
+              "path": ["api", "queue", "update"]
+            },
+            "description": "Real-time queue updates for polling. Returns current queue status and any changes."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Wait Times",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-TOKEN",
+                "value": "{{csrf_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/queue/update-wait-times",
+              "host": ["{{base_url}}"],
+              "path": ["api", "queue", "update-wait-times"]
+            },
+            "description": "Recalculates and updates estimated wait times for all customers in the queue. Called periodically by the system."
+          },
+          "response": []
+        }
+      ],
+      "description": "Endpoints for managing and monitoring the queue system"
+    },
+    {
+      "name": "Customer Management",
+      "item": [
+        {
+          "name": "Get Customer Current Wait Time",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/customer/{{customer_id}}/current-wait",
+              "host": ["{{base_url}}"],
+              "path": ["api", "customer", "{{customer_id}}", "current-wait"]
+            },
+            "description": "Returns the current estimated wait time for a specific customer based on their customer ID."
+          },
+          "response": [
+            {
+              "name": "Success - Waiting",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/customer/1/current-wait",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "customer", "1", "current-wait"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n    \"success\": true,\n    \"status\": \"waiting\",\n    \"wait_time_minutes\": 25,\n    \"formatted\": \"~25 mins\",\n    \"position\": 5,\n    \"queue_number\": \"042\"\n}"
+            },
+            {
+              "name": "Success - Seated",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/customer/1/current-wait",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "customer", "1", "current-wait"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n    \"success\": true,\n    \"status\": \"seated\",\n    \"message\": \"You are now seated. Enjoy your meal!\",\n    \"table_number\": \"A-5\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Customer Position",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/customer/{{queue_number}}/position",
+              "host": ["{{base_url}}"],
+              "path": ["api", "customer", "{{queue_number}}", "position"]
+            },
+            "description": "Returns the current position in queue for a customer based on their queue number."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/customer/042/position",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "customer", "042", "position"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n    \"success\": true,\n    \"queue_number\": \"042\",\n    \"position\": 5,\n    \"total_ahead\": 4,\n    \"estimated_wait\": 25,\n    \"status\": \"waiting\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Request Priority Verification",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-TOKEN",
+                "value": "{{csrf_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"customer_id\": 1,\n    \"priority_type\": \"senior\",\n    \"verification_method\": \"staff_visual\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/customer/request-verification",
+              "host": ["{{base_url}}"],
+              "path": ["api", "customer", "request-verification"]
+            },
+            "description": "Submits a request for priority verification. Priority types: senior, pwd, pregnant. Verification methods: id_scan, staff_visual, self_declaration."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"customer_id\": 1,\n    \"priority_type\": \"senior\",\n    \"verification_method\": \"staff_visual\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/customer/request-verification",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "customer", "request-verification"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n    \"success\": true,\n    \"message\": \"Verification request submitted. Please wait for staff confirmation.\",\n    \"request_id\": 42,\n    \"pin\": \"1234\",\n    \"expires_at\": \"2025-10-24T14:30:00Z\"\n}"
+            },
+            {
+              "name": "Validation Error",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"customer_id\": 1,\n    \"priority_type\": \"invalid\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/customer/request-verification",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "customer", "request-verification"]
+                }
+              },
+              "status": "Unprocessable Entity",
+              "code": 422,
+              "_postman_previewlanguage": "json",
+              "body": "{\n    \"message\": \"The priority type field is invalid.\",\n    \"errors\": {\n        \"priority_type\": [\n            \"Invalid priority type\"\n        ]\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Check Verification Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/customer/verification-status/1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "customer", "verification-status", "1"]
+            },
+            "description": "Checks the status of a priority verification request."
+          },
+          "response": [
+            {
+              "name": "Pending",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/customer/verification-status/1",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "customer", "verification-status", "1"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n    \"success\": true,\n    \"status\": \"pending\",\n    \"message\": \"Your verification is being reviewed by staff.\"\n}"
+            },
+            {
+              "name": "Verified",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/customer/verification-status/1",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "customer", "verification-status", "1"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n    \"success\": true,\n    \"status\": \"verified\",\n    \"message\": \"Your priority status has been verified!\",\n    \"verified_at\": \"2025-10-24T14:25:00Z\",\n    \"verified_by\": \"John Smith\"\n}"
+            }
+          ]
+        }
+      ],
+      "description": "Endpoints for customer information and verification requests"
+    },
+    {
+      "name": "Priority Verification (Staff)",
+      "item": [
+        {
+          "name": "Get Pending Verifications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/verification/pending",
+              "host": ["{{base_url}}"],
+              "path": ["api", "verification", "pending"]
+            },
+            "description": "Returns all pending priority verification requests for staff review."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/verification/pending",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "verification", "pending"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n    \"success\": true,\n    \"data\": [\n        {\n            \"id\": 1,\n            \"customer_name\": \"John Doe\",\n            \"priority_type\": \"senior\",\n            \"pin\": \"1234\",\n            \"requested_at\": \"2025-10-24T14:20:00Z\",\n            \"expires_at\": \"2025-10-24T14:30:00Z\",\n            \"time_remaining\": \"8 minutes\"\n        },\n        {\n            \"id\": 2,\n            \"customer_name\": \"Jane Smith\",\n            \"priority_type\": \"pwd\",\n            \"pin\": \"5678\",\n            \"requested_at\": \"2025-10-24T14:22:00Z\",\n            \"expires_at\": \"2025-10-24T14:32:00Z\",\n            \"time_remaining\": \"10 minutes\"\n        }\n    ],\n    \"count\": 2\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Completed Verifications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/verification/completed",
+              "host": ["{{base_url}}"],
+              "path": ["api", "verification", "completed"]
+            },
+            "description": "Returns recently completed (verified or rejected) priority verification requests."
+          },
+          "response": []
+        },
+        {
+          "name": "Complete Verification",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-TOKEN",
+                "value": "{{csrf_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"verification_id\": 1,\n    \"staff_name\": \"John Smith\",\n    \"notes\": \"Valid senior citizen ID presented\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/verification/complete",
+              "host": ["{{base_url}}"],
+              "path": ["api", "verification", "complete"]
+            },
+            "description": "Marks a verification request as completed/approved by staff."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"verification_id\": 1,\n    \"staff_name\": \"John Smith\",\n    \"notes\": \"Valid senior citizen ID presented\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/verification/complete",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "verification", "complete"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n    \"success\": true,\n    \"message\": \"Verification completed successfully.\",\n    \"verified_at\": \"2025-10-24T14:25:00Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Reject Verification",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-TOKEN",
+                "value": "{{csrf_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"verification_id\": 1,\n    \"staff_name\": \"John Smith\",\n    \"reason\": \"Unable to verify age\",\n    \"notes\": \"No valid ID presented\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/verification/reject",
+              "host": ["{{base_url}}"],
+              "path": ["api", "verification", "reject"]
+            },
+            "description": "Rejects a verification request with reason and notes."
+          },
+          "response": []
+        }
+      ],
+      "description": "Staff endpoints for managing priority verification requests"
+    },
+    {
+      "name": "Table Management",
+      "item": [
+        {
+          "name": "Get Table Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/tables/status",
+              "host": ["{{base_url}}"],
+              "path": ["api", "tables", "status"]
+            },
+            "description": "Returns current status of all restaurant tables including availability and occupancy."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/tables/status",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "tables", "status"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n    \"success\": true,\n    \"data\": {\n        \"available\": 5,\n        \"occupied\": 12,\n        \"reserved\": 2,\n        \"maintenance\": 1,\n        \"tables\": [\n            {\n                \"id\": 1,\n                \"table_number\": \"A-1\",\n                \"capacity\": 4,\n                \"status\": \"available\",\n                \"is_vip\": false\n            },\n            {\n                \"id\": 2,\n                \"table_number\": \"A-2\",\n                \"capacity\": 2,\n                \"status\": \"occupied\",\n                \"is_vip\": false,\n                \"occupied_at\": \"2025-10-24T13:30:00Z\",\n                \"estimated_departure\": \"2025-10-24T14:30:00Z\"\n            }\n        ]\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Table Suggestions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/tables/suggestions?party_size=4",
+              "host": ["{{base_url}}"],
+              "path": ["api", "tables", "suggestions"],
+              "query": [
+                {
+                  "key": "party_size",
+                  "value": "4"
+                }
+              ]
+            },
+            "description": "Returns table suggestions based on party size. Smart algorithm considers capacity, proximity, and current occupancy."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/tables/suggestions?party_size=4",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "tables", "suggestions"],
+                  "query": [
+                    {
+                      "key": "party_size",
+                      "value": "4"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n    \"success\": true,\n    \"data\": [\n        {\n            \"table_id\": 5,\n            \"table_number\": \"B-2\",\n            \"capacity\": 4,\n            \"match_score\": 100,\n            \"reason\": \"Perfect match for party size\"\n        },\n        {\n            \"table_id\": 8,\n            \"table_number\": \"C-1\",\n            \"capacity\": 6,\n            \"match_score\": 75,\n            \"reason\": \"Can accommodate with extra space\"\n        }\n    ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Reserve Table",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-TOKEN",
+                "value": "{{csrf_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"customer_id\": 1,\n    \"party_size\": 4\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/tables/5/reserve",
+              "host": ["{{base_url}}"],
+              "path": ["api", "tables", "5", "reserve"]
+            },
+            "description": "Reserves a specific table for a customer. Table ID is in the URL path."
+          },
+          "response": []
+        }
+      ],
+      "description": "Endpoints for table availability and reservation management"
+    },
+    {
+      "name": "Settings",
+      "item": [
+        {
+          "name": "Get Public Settings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/settings/public",
+              "host": ["{{base_url}}"],
+              "path": ["api", "settings", "public"]
+            },
+            "description": "Returns all public system settings (non-sensitive configuration)."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/settings/public",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "settings", "public"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n    \"success\": true,\n    \"data\": {\n        \"restaurant_name\": \"Café Gervacio's\",\n        \"party_size_min\": 1,\n        \"party_size_max\": 20,\n        \"enable_priority\": true,\n        \"average_wait_time\": 25,\n        \"contact_number\": \"(082) 123-4567\"\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Check If Store Is Open",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/settings/is-open",
+              "host": ["{{base_url}}"],
+              "path": ["api", "settings", "is-open"]
+            },
+            "description": "Checks if the restaurant is currently open based on store hours."
+          },
+          "response": [
+            {
+              "name": "Open",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/settings/is-open",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "settings", "is-open"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n    \"success\": true,\n    \"is_open\": true,\n    \"current_time\": \"14:30:00\",\n    \"opens_at\": \"09:00:00\",\n    \"closes_at\": \"21:00:00\"\n}"
+            },
+            {
+              "name": "Closed",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/settings/is-open",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "settings", "is-open"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n    \"success\": true,\n    \"is_open\": false,\n    \"current_time\": \"22:30:00\",\n    \"message\": \"We are currently closed. Please come back during operating hours.\",\n    \"next_opening\": \"2025-10-25 09:00:00\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Store Hours",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/settings/store-hours",
+              "host": ["{{base_url}}"],
+              "path": ["api", "settings", "store-hours"]
+            },
+            "description": "Returns store operating hours for all days of the week."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/settings/store-hours",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "settings", "store-hours"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n    \"success\": true,\n    \"data\": {\n        \"monday\": {\n            \"open\": \"09:00:00\",\n            \"close\": \"21:00:00\",\n            \"is_closed\": false\n        },\n        \"tuesday\": {\n            \"open\": \"09:00:00\",\n            \"close\": \"21:00:00\",\n            \"is_closed\": false\n        },\n        \"sunday\": {\n            \"is_closed\": true\n        }\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Today's Hours",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/settings/today-hours",
+              "host": ["{{base_url}}"],
+              "path": ["api", "settings", "today-hours"]
+            },
+            "description": "Returns store hours for today only."
+          },
+          "response": []
+        },
+        {
+          "name": "Check Registration Block",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/settings/block-registration",
+              "host": ["{{base_url}}"],
+              "path": ["api", "settings", "block-registration"]
+            },
+            "description": "Checks if new registrations should be blocked (e.g., when closing, full capacity)."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Settings (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-TOKEN",
+                "value": "{{csrf_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"party_size_max\": 25,\n    \"average_wait_time\": 30\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/settings/update",
+              "host": ["{{base_url}}"],
+              "path": ["api", "settings", "update"]
+            },
+            "description": "Updates system settings. Requires admin authentication."
+          },
+          "response": []
+        }
+      ],
+      "description": "System settings and configuration endpoints"
+    },
+    {
+      "name": "Analytics",
+      "item": [
+        {
+          "name": "Get Today's Analytics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/analytics/today",
+              "host": ["{{base_url}}"],
+              "path": ["api", "analytics", "today"]
+            },
+            "description": "Returns analytics data for the current day including customer counts, wait times, and peak hours."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/analytics/today",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "analytics", "today"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n    \"success\": true,\n    \"data\": {\n        \"date\": \"2025-10-24\",\n        \"total_customers\": 145,\n        \"total_priority\": 32,\n        \"average_wait_time\": 28,\n        \"peak_hour\": \"13:00\",\n        \"priority_breakdown\": {\n            \"senior\": 18,\n            \"pwd\": 8,\n            \"pregnant\": 6\n        },\n        \"hourly_distribution\": [\n            {\"hour\": \"09:00\", \"count\": 8},\n            {\"hour\": \"10:00\", \"count\": 12},\n            {\"hour\": \"11:00\", \"count\": 15},\n            {\"hour\": \"12:00\", \"count\": 22},\n            {\"hour\": \"13:00\", \"count\": 28}\n        ]\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Analytics by Date",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/analytics/date/2025-10-23",
+              "host": ["{{base_url}}"],
+              "path": ["api", "analytics", "date", "2025-10-23"]
+            },
+            "description": "Returns analytics data for a specific date (YYYY-MM-DD format)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Export History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/analytics/export-history",
+              "host": ["{{base_url}}"],
+              "path": ["api", "analytics", "export-history"]
+            },
+            "description": "Returns list of previously exported analytics reports."
+          },
+          "response": []
+        }
+      ],
+      "description": "Analytics and reporting endpoints for business intelligence"
+    }
+  ]
+}
